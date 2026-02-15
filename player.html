@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Nonton film dan donghua terbaru dengan kualitas terbaik" />
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:title" content="FilmKu - Nonton Film & Donghua" />
+  <meta property="og:description" content="Nonton film dan donghua favorit Anda" />
+  <meta property="og:image" content="https://pub-ed9e696ecd8f4beea54311e8c423007a.r2.dev/IMG_20260215_012942.png" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://pub-7eec910773b24498a4ee9bebab96f7e9.r2.dev/IMG_20260215_012942.png" />
+  
+  <title>FilmKu - Nonton Film & Donghua</title>
+  
+  <!-- Preconnect untuk performa -->
+  <link rel="preconnect" href="https://jsbqmtzkayvnpzmnycyv.supabase.co" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="player.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body class="player-page">
+
+<!-- Header sederhana -->
+<header class="player-header">
+  <div class="logo-container">
+    <img 
+      src="https://pub-ed9e696ecd8f4beea54311e8c423007a.r2.dev/IMG_20260215_012942.png" 
+      alt="FilmKu Logo" 
+      class="logo-img"
+      loading="eager"
+    >
+    <h1 class="logo">FilmKu</h1>
+  </div>
+</header>
+
+<!-- Main Player Content -->
+<main class="player-wrapper" id="playerWrapper">
+  <!-- Loading state -->
+  <div class="loading-state" id="loadingState">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Memuat video...</p>
+  </div>
+</main>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast">
+  <i class="fas fa-check-circle"></i>
+  <span id="toastMessage">Berhasil disalin!</span>
+</div>
+
+<!-- Share Modal -->
+<div class="modal" id="shareModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-share-alt"></i>
+        Bagikan Film
+      </h3>
+      <button class="close-modal" onclick="closeModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="share-options">
+      <button class="share-option whatsapp" onclick="shareVia('whatsapp')">
+        <i class="fab fa-whatsapp"></i>
+        <span>WhatsApp</span>
+      </button>
+      <button class="share-option facebook" onclick="shareVia('facebook')">
+        <i class="fab fa-facebook"></i>
+        <span>Facebook</span>
+      </button>
+      <button class="share-option twitter" onclick="shareVia('twitter')">
+        <i class="fab fa-twitter"></i>
+        <span>Twitter</span>
+      </button>
+      <button class="share-option telegram" onclick="shareVia('telegram')">
+        <i class="fab fa-telegram"></i>
+        <span>Telegram</span>
+      </button>
+    </div>
+    
+    <div class="copy-link">
+      <input type="text" id="shareLink" readonly>
+      <button onclick="copyShareLink()">
+        <i class="fas fa-copy"></i>
+        Salin
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="player.js"></script>
+</body>
+</html>

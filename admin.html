@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel - FilmKu</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <!-- Header dengan Statistik -->
+    <div class="admin-header">
+      <div class="admin-title">
+        <i class="fas fa-film"></i>
+        <div>
+          <h1>Panel Admin FilmKu</h1>
+          <p>Kelola semua konten film dan donghua</p>
+        </div>
+      </div>
+      <div class="admin-stats">
+        <div class="stat-item">
+          <i class="fas fa-film"></i>
+          <span id="totalMovies">0</span>
+          <small>Total Konten</small>
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-video"></i>
+          <span id="totalFilms">0</span>
+          <small>Film</small>
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-tv"></i>
+          <span id="totalDonghua">0</span>
+          <small>Donghua</small>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+          <i class="fas fa-plus"></i> Tambah Konten
+        </button>
+        <button class="btn logout-btn" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Keluar
+        </button>
+      </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="admin-toolbar">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Cari judul..." />
+      </div>
+      <div class="filter-buttons">
+        <button class="filter-btn active" onclick="filterMovies('all')" id="filterAll">Semua</button>
+        <button class="filter-btn" onclick="filterMovies('film')" id="filterFilm">Film</button>
+        <button class="filter-btn" onclick="filterMovies('donghua')" id="filterDonghua">Donghua</button>
+      </div>
+    </div>
+    
+    <!-- Tabel Movies -->
+    <div class="movies-table" id="moviesTable">
+      <div class="table-header">
+        <div>Thumbnail</div>
+        <div>Judul</div>
+        <div>Kategori</div>
+        <div>Tahun</div>
+        <div>Episode</div>
+        <div>Views</div>
+        <div>Dibuat</div>
+        <div>Aksi</div>
+      </div>
+      <div id="moviesList"></div>
+    </div>
+  </div>
+  
+  <!-- Modal Tambah/Edit Konten -->
+  <div class="modal" id="moviesModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Tambah Konten Baru</h2>
+        <button class="close-btn" onclick="closeModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Tab Navigation -->
+        <div class="modal-tabs">
+          <button class="modal-tab active" onclick="switchModalTab('info')" id="tabInfo">
+            <i class="fas fa-info-circle"></i> Informasi Dasar
+          </button>
+          <button class="modal-tab" onclick="switchModalTab('episodes')" id="tabEpisodes">
+            <i class="fas fa-list"></i> Kelola Episode
+          </button>
+        </div>
+        
+        <!-- Form Informasi Dasar -->
+        <div id="infoTab" class="tab-content active">
+          <form id="moviesForm" autocomplete="off">
+            <input type="hidden" id="moviesId">
+            <input type="hidden" id="currentEpisodeCount" value="0">
+            
+            <div class="form-group">
+              <label for="title">
+                <i class="fas fa-heading"></i> Judul Film/Donghua
+                <span class="required">*</span>
+              </label>
+              <input type="text" id="title" name="title" maxlength="255" placeholder="Masukkan judul..." required>
+              <small class="form-hint">Maksimal 255 karakter</small>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="category">
+                  <i class="fas fa-tag"></i> Kategori
+                  <span class="required">*</span>
+                </label>
+                <select id="category" name="category" required onchange="handleCategoryChange()">
+                  <option value="">Pilih Kategori</option>
+                  <option value="film">🎬 Film</option>
+                  <option value="donghua">📺 Donghua</option>
+                </select>
+              </div>
+              
+              <div class="form-group half">
+                <label for="year">
+                  <i class="fas fa-calendar"></i> Tahun Rilis
+                </label>
+                <input type="number" id="year" name="year" min="1900" max="2026" step="1" placeholder="2024">
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="duration">
+                  <i class="fas fa-clock"></i> Durasi (menit)
+                </label>
+                <input type="number" id="duration" name="duration" min="1" max="300" placeholder="120">
+              </div>
+              
+              <div class="form-group half">
+                <label for="rating">
+                  <i class="fas fa-star"></i> Rating
+                </label>
+                <input type="number" id="rating" name="rating" min="0" max="10" step="0.1" placeholder="8.5">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="thumbnail">
+                <i class="fas fa-image"></i> URL Thumbnail
+                <span class="required">*</span>
+              </label>
+              <input type="url" id="thumbnail" name="thumbnail" placeholder="https://example.com/image.jpg" required>
+              <div class="preview-container">
+                <img id="thumbnailPreview" class="preview-image" style="display: none;">
+                <div class="preview-placeholder" id="previewPlaceholder">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <p>Preview thumbnail akan muncul di sini</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="description">
+                <i class="fas fa-align-left"></i> Deskripsi (Opsional)
+              </label>
+              <textarea id="description" name="description" maxlength="1000" placeholder="Masukkan deskripsi film/donghua (opsional)"></textarea>
+              <small class="form-hint"><span id="charCount">0</span>/1000 karakter - Bisa dikosongkan</small>
+            </div>
+            
+            <!-- VIDEO URL - PASTIKAN ELEMEN INI ADA -->
+            <div class="form-group" id="videoUrlGroup">
+              <label for="videoUrl">
+                <i class="fas fa-video"></i> URL Video
+                <span class="required" id="videoUrlRequired">*</span>
+              </label>
+              <input type="url" id="videoUrl" name="videoUrl" placeholder="https://example.com/video.mp4">
+              <small class="form-hint">Untuk film: wajib diisi. Untuk donghua: opsional (gunakan tab episode)</small>
+            </div>
+            
+            <div class="info-message" id="episodeInfo" style="display: none;">
+              <i class="fas fa-info-circle"></i>
+              <span>Konten ini memiliki <strong id="episodeCountDisplay">0</strong> episode. Gunakan tab "Kelola Episode" untuk mengelola episode.</span>
+            </div>
+          </form>
+        </div>
+        
+        <!-- Tab Kelola Episode -->
+        <div id="episodesTab" class="tab-content">
+          <div class="episodes-header">
+            <h3>
+              <i class="fas fa-list"></i>
+              Daftar Episode
+            </h3>
+            <button class="btn btn-primary btn-sm" onclick="addEpisodeField()">
+              <i class="fas fa-plus"></i> Tambah Episode
+            </button>
+          </div>
+          
+          <div class="episodes-info">
+            <i class="fas fa-info-circle"></i>
+            <span>Urutkan episode dengan drag & drop atau gunakan tombol panah</span>
+          </div>
+          
+          <div id="episodesList" class="episodes-list">
+            <!-- Episode fields will be dynamically added here -->
+          </div>
+          
+          <div class="episodes-actions">
+            <button class="btn btn-secondary" onclick="sortEpisodesAscending()">
+              <i class="fas fa-sort-amount-down"></i> Urutkan (1,2,3...)
+            </button>
+            <button class="btn btn-secondary" onclick="sortEpisodesDescending()">
+              <i class="fas fa-sort-amount-up"></i> Urutkan (10,9,8...)
+            </button>
+          </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">
+            <i class="fas fa-times"></i> Batal
+          </button>
+          <button type="button" class="btn btn-primary" id="submitBtn" onclick="saveAllData()">
+            <i class="fas fa-save"></i> Simpan Semua
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Konfirmasi Hapus -->
+  <div class="modal" id="deleteModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Konfirmasi Hapus</h2>
+        <button class="close-btn" onclick="closeDeleteModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; padding: 20px;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ff3c3c; margin-bottom: 15px;"></i>
+          <p style="color: white; margin-bottom: 20px;" id="deleteMessage">Apakah Anda yakin ingin menghapus konten ini?</p>
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">
+              <i class="fas fa-times"></i> Batal
+            </button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">
+              <i class="fas fa-trash"></i> Hapus
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Hapus Episode -->
+  <div class="modal" id="deleteEpisodeModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Hapus Episode</h2>
+        <button class="close-btn" onclick="closeDeleteEpisodeModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; padding: 20px;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ff3c3c; margin-bottom: 15px;"></i>
+          <p style="color: white; margin-bottom: 20px;" id="deleteEpisodeMessage">Apakah Anda yakin ingin menghapus episode ini?</p>
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-secondary" onclick="closeDeleteEpisodeModal()">
+              <i class="fas fa-times"></i> Batal
+            </button>
+            <button class="btn btn-danger" id="confirmDeleteEpisodeBtn">
+              <i class="fas fa-trash"></i> Hapus
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
