@@ -1,720 +1,614 @@
 /**
  * player.js - Halaman Player FilmKu
- * Version: 2.0 - Professional
- * 
- * Fitur:
- * - Modular architecture
- * - Comprehensive error handling
- * - Optimized performance
- * - Accessibility support
+ * Version: 3.0 - Fixed Episode Selection, No Comments
  */
 
 // =====================================================
 // KONFIGURASI
 // =====================================================
 const CONFIG = {
-  SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o',
-  MAX_RECOMMENDATIONS: 8,
-  MAX_COMMENT_LENGTH: 500,
-  TOAST_DURATION: 3000
+    SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o',
+    EPISODES_PER_PAGE: 5,
+    TOAST_DURATION: 3000
 };
 
 // =====================================================
-// INITIALIZATION
+// SUPABASE INIT
 // =====================================================
+if (typeof supabase === 'undefined') {
+    alert('Gagal memuat library. Refresh halaman.');
+    throw new Error('Supabase not loaded');
+}
+
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 // =====================================================
-// STATE MANAGEMENT
-// =====================================================
-const State = {
-  currentMovie: null,
-  allMovies: [],
-  episodes: [],
-  currentEpisode: 1,
-  comments: [],
-  isLoading: true,
-  
-  get totalEpisodes() {
-    return this.episodes.length;
-  },
-  
-  get videoUrl() {
-    if (!this.currentMovie) return '';
-    
-    // Cari di episodes dulu
-    if (this.episodes.length > 0) {
-      const episode = this.episodes.find(ep => ep.episode_number === this.currentEpisode);
-      if (episode?.video_url) return episode.video_url;
-    }
-    
-    // Fallback ke video_url di movies
-    return this.currentMovie.video_url || '';
-  },
-  
-  reset() {
-    this.currentMovie = null;
-    this.episodes = [];
-    this.currentEpisode = 1;
-    this.comments = [];
-  }
-};
-
-// =====================================================
-// URL PARAMETERS
+// URL PARAMS
 // =====================================================
 const urlParams = new URLSearchParams(window.location.search);
 const movieId = urlParams.get('id');
-const episodeParam = urlParams.get('ep') ? parseInt(urlParams.get('ep')) : 1;
+let currentEpisode = urlParams.get('ep') ? parseInt(urlParams.get('ep')) : 1;
 
 if (!movieId) {
-  showError('ID film tidak ditemukan');
+    document.body.innerHTML = '<div style="color:white; text-align:center; padding:50px;">ID film tidak ditemukan</div>';
+    throw new Error('No movie ID');
 }
 
 // =====================================================
-// DOM ELEMENTS
+// STATE
 // =====================================================
-const DOM = {
-  wrapper: document.getElementById('playerWrapper'),
-  toast: document.getElementById('toast'),
-  toastMessage: document.getElementById('toastMessage'),
-  loadingState: document.getElementById('loadingState'),
-  shareModal: document.getElementById('shareModal'),
-  shareLink: document.getElementById('shareLink'),
-  
-  showLoading() {
-    if (this.loadingState) {
-      this.loadingState.style.display = 'flex';
+const State = {
+    movie: null,
+    episodes: [],
+    allMovies: [],
+    currentEpisode: currentEpisode,
+    showAllEpisodes: false,
+    
+    get filteredEpisodes() {
+        if (!this.episodes.length) return [];
+        // Urut descending (terbaru di atas)
+        const sorted = [...this.episodes].sort((a, b) => b.episode_number - a.episode_number);
+        if (this.showAllEpisodes) return sorted;
+        return sorted.slice(0, CONFIG.EPISODES_PER_PAGE);
+    },
+    
+    get hasMoreEpisodes() {
+        return this.episodes.length > CONFIG.EPISODES_PER_PAGE && !this.showAllEpisodes;
+    },
+    
+    get hiddenCount() {
+        return Math.max(0, this.episodes.length - CONFIG.EPISODES_PER_PAGE);
+    },
+    
+    // Mendapatkan URL video berdasarkan episode saat ini
+    getCurrentVideoUrl() {
+        if (!this.movie) return '';
+        
+        // Cari di episodes dulu
+        if (this.episodes.length > 0) {
+            const episode = this.episodes.find(ep => ep.episode_number === this.currentEpisode);
+            if (episode && episode.video_url) {
+                return episode.video_url;
+            }
+        }
+        
+        // Fallback ke video_url di movie
+        return this.movie.video_url || '';
     }
-  },
-  
-  hideLoading() {
-    if (this.loadingState) {
-      this.loadingState.style.display = 'none';
-    }
-  },
-  
-  updateContent(html) {
-    if (this.wrapper) {
-      this.wrapper.innerHTML = html;
-    }
-  }
 };
 
 // =====================================================
-// DATA SERVICE
+// DOM
 // =====================================================
-const DataService = {
-  async fetchMovie() {
-    const { data, error } = await supabaseClient
-      .from('movies')
-      .select('*')
-      .eq('id', movieId)
-      .single();
-      
-    if (error) throw error;
-    return data;
-  },
-  
-  async fetchEpisodes() {
-    const { data, error } = await supabaseClient
-      .from('episodes')
-      .select('*')
-      .eq('movie_id', movieId)
-      .order('episode_number', { ascending: true });
-      
-    if (error) throw error;
-    return data || [];
-  },
-  
-  async fetchAllMovies() {
-    const { data, error } = await supabaseClient
-      .from('movies')
-      .select('*')
-      .limit(20);
-      
-    if (error) throw error;
-    return data || [];
-  },
-  
-  async fetchComments() {
-    const { data, error } = await supabaseClient
-      .from('comments')
-      .select('*')
-      .eq('movie_id', movieId)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    return data || [];
-  },
-  
-  async updateViews() {
-    if (!State.currentMovie) return;
+const DOM = {
+    wrapper: document.getElementById('playerWrapper'),
+    loading: document.getElementById('loadingState'),
+    toast: document.getElementById('toast'),
+    toastMsg: document.getElementById('toastMessage'),
     
-    try {
-      await supabaseClient
-        .from('movies')
-        .update({ 
-          views: (State.currentMovie.views || 0) + 1,
-          last_watched: new Date().toISOString()
-        })
-        .eq('id', movieId);
-    } catch (error) {
-      console.error('[DataService] Error updating views:', error);
+    showLoading() {
+        if (this.loading) this.loading.style.display = 'flex';
+    },
+    
+    hideLoading() {
+        if (this.loading) this.loading.style.display = 'none';
+    },
+    
+    showError(msg) {
+        if (this.wrapper) {
+            this.wrapper.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>${msg}</p>
+                    <button onclick="location.reload()" class="retry-btn">
+                        <i class="fas fa-redo"></i> Refresh
+                    </button>
+                </div>
+            `;
+        }
+        this.hideLoading();
+    },
+    
+    toast(msg, type = 'success') {
+        if (!this.toast || !this.toastMsg) return;
+        this.toastMsg.textContent = msg;
+        this.toast.classList.add('show');
+        this.toast.classList.toggle('error', type === 'error');
+        setTimeout(() => this.toast.classList.remove('show'), CONFIG.TOAST_DURATION);
     }
-  },
-  
-  async postComment(content) {
-    const { error } = await supabaseClient
-      .from('comments')
-      .insert([{
-        movie_id: movieId,
-        content: content,
-        username: 'Pengguna' + Math.floor(Math.random() * 1000),
-        created_at: new Date().toISOString(),
-        likes: 0
-      }]);
-      
-    if (error) throw error;
-  },
-  
-  async likeComment(commentId, currentLikes) {
-    const { error } = await supabaseClient
-      .from('comments')
-      .update({ likes: (currentLikes || 0) + 1 })
-      .eq('id', commentId);
-      
-    if (error) throw error;
-  }
+};
+
+// =====================================================
+// API SERVICE
+// =====================================================
+const API = {
+    async getMovie() {
+        const { data, error } = await supabaseClient
+            .from('movies')
+            .select('*')
+            .eq('id', movieId)
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    
+    async getEpisodes() {
+        const { data, error } = await supabaseClient
+            .from('episodes')
+            .select('*')
+            .eq('movie_id', movieId)
+            .order('episode_number');
+        if (error && error.code !== '42P01') throw error;
+        return data || [];
+    },
+    
+    async getAllMovies() {
+        const { data, error } = await supabaseClient
+            .from('movies')
+            .select('*')
+            .limit(10);
+        if (error) throw error;
+        return data || [];
+    },
+    
+    async updateViews(views) {
+        await supabaseClient
+            .from('movies')
+            .update({ views: (views || 0) + 1 })
+            .eq('id', movieId);
+    }
+};
+
+// =====================================================
+// VIDEO RENDERER
+// =====================================================
+const VideoRenderer = {
+    render(videoUrl, poster) {
+        if (!videoUrl) {
+            return '<div class="video-error">Tidak ada video</div>';
+        }
+        
+        // YouTube
+        if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+            return this.renderYouTube(videoUrl);
+        }
+        
+        // Vimeo
+        if (videoUrl.includes('vimeo.com')) {
+            return this.renderVimeo(videoUrl);
+        }
+        
+        // StreamSB
+        if (videoUrl.includes('streamsb') || videoUrl.includes('sbembed')) {
+            return this.renderEmbed(videoUrl);
+        }
+        
+        // MixDrop
+        if (videoUrl.includes('mixdrop')) {
+            return this.renderMixDrop(videoUrl);
+        }
+        
+        // Google Drive
+        if (videoUrl.includes('drive.google.com')) {
+            return this.renderGoogleDrive(videoUrl);
+        }
+        
+        // Default: direct video
+        return this.renderDirectVideo(videoUrl, poster);
+    },
+    
+    renderYouTube(url) {
+        let videoId = '';
+        const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?]+)/);
+        if (match) videoId = match[1];
+        
+        if (!videoId) return this.renderDirectVideo(url);
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0"
+                    class="video-iframe"
+                    allowfullscreen
+                    allow="autoplay; encrypted-media"
+                ></iframe>
+            </div>
+        `;
+    },
+    
+    renderVimeo(url) {
+        let videoId = '';
+        const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+        if (match) videoId = match[1];
+        
+        if (!videoId) return this.renderDirectVideo(url);
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="https://player.vimeo.com/video/${videoId}?autoplay=1"
+                    class="video-iframe"
+                    allowfullscreen
+                    allow="autoplay"
+                ></iframe>
+            </div>
+        `;
+    },
+    
+    renderEmbed(url) {
+        // Ubah ke format embed
+        let embedUrl = url;
+        if (url.includes('streamsb.net')) {
+            embedUrl = url.replace('streamsb.net', 'streamsb.net/embed');
+        } else if (url.includes('sbembed.com')) {
+            embedUrl = url.replace('sbembed.com', 'sbembed.com/embed');
+        }
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="${embedUrl}"
+                    class="video-iframe"
+                    allowfullscreen
+                    allow="autoplay"
+                ></iframe>
+            </div>
+        `;
+    },
+    
+    renderMixDrop(url) {
+        let embedUrl = url;
+        if (url.includes('mixdrop.co')) {
+            embedUrl = url.replace('mixdrop.co', 'mixdrop.co/e');
+        } else if (url.includes('mixdrop.to')) {
+            embedUrl = url.replace('mixdrop.to', 'mixdrop.to/e');
+        }
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="${embedUrl}"
+                    class="video-iframe"
+                    allowfullscreen
+                    allow="autoplay"
+                ></iframe>
+            </div>
+        `;
+    },
+    
+    renderGoogleDrive(url) {
+        let fileId = '';
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match) fileId = match[1];
+        
+        if (!fileId) return this.renderDirectVideo(url);
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="https://drive.google.com/file/d/${fileId}/preview"
+                    class="video-iframe"
+                    allowfullscreen
+                    allow="autoplay"
+                ></iframe>
+            </div>
+        `;
+    },
+    
+    renderDirectVideo(url, poster) {
+        return `
+            <div class="video-container">
+                <video id="videoPlayer" class="video-player" controls poster="${poster}" autoplay>
+                    <source src="${url}" type="video/mp4">
+                    <source src="${url}" type="video/webm">
+                    Browser Anda tidak mendukung tag video.
+                </video>
+            </div>
+        `;
+    }
 };
 
 // =====================================================
 // UI RENDERER
 // =====================================================
 const UIRenderer = {
-  formatNumber(num) {
-    if (!num) return '0';
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'jt';
-    if (num >= 1_000) return (num / 1_000).toFixed(1) + 'rb';
-    return num.toString();
-  },
-  
-  formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    escape(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
     
-    if (diffDays === 0) return 'Hari ini';
-    if (diffDays === 1) return 'Kemarin';
-    if (diffDays < 7) return `${diffDays} hari lalu`;
+    formatNumber(num) {
+        if (!num) return '0';
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'jt';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'rb';
+        return num.toString();
+    },
     
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  },
-  
-  renderEpisodes() {
-    if (!State.episodes.length || State.episodes.length <= 1) return '';
-    
-    const episodesHtml = State.episodes.map(ep => {
-      const episodeNum = ep.episode_number;
-      const isActive = episodeNum === State.currentEpisode;
-      
-      return `
-        <div class="episode-card ${isActive ? 'active' : ''}" 
-             onclick="Player.changeEpisode(${episodeNum})"
-             role="button"
-             tabindex="0"
-             aria-label="Episode ${episodeNum}">
-          <div class="episode-number">${episodeNum}</div>
-          <div class="episode-info">
-            <div class="episode-title">${ep.title || `Episode ${episodeNum}`}</div>
-            <div class="episode-duration">
-              <i class="fas fa-clock" aria-hidden="true"></i>
-              ${ep.duration || '24'} menit
+    render() {
+        if (!State.movie) {
+            DOM.showError('Film tidak ditemukan');
+            return;
+        }
+        
+        const videoUrl = State.getCurrentVideoUrl();
+        
+        const html = `
+            ${VideoRenderer.render(videoUrl, State.movie.thumbnail)}
+            
+            <div class="video-info-bar">
+                <div class="video-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-eye"></i>
+                        <span><strong>${this.formatNumber(State.movie.views)}</strong> ditonton</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-calendar"></i>
+                        <span><strong>${State.movie.year || '-'}</strong></span>
+                    </div>
+                    ${State.episodes.length > 0 ? `
+                    <div class="stat-item">
+                        <i class="fas fa-list"></i>
+                        <span><strong>${State.episodes.length}</strong> episode</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="video-actions">
+                    <button class="action-btn" onclick="App.share()">
+                        <i class="fas fa-share-alt"></i> Bagikan
+                    </button>
+                </div>
             </div>
-          </div>
-        </div>
-      `;
-    }).join('');
+            
+            <section class="movie-details">
+                <h1 class="movie-title">${this.escape(State.movie.title)}</h1>
+                <p class="movie-description">${this.escape(State.movie.description) || 'Tidak ada deskripsi'}</p>
+            </section>
+            
+            ${this.renderEpisodes()}
+            ${this.renderRecommendations()}
+        `;
+        
+        DOM.wrapper.innerHTML = html;
+        DOM.hideLoading();
+    },
     
-    return `
-      <section class="episodes-section" aria-label="Daftar Episode">
-        <h2 class="section-title">
-          <i class="fas fa-list" aria-hidden="true"></i>
-          Daftar Episode
-          <span>${State.episodes.length} episode</span>
-        </h2>
-        <div class="episodes-grid">
-          ${episodesHtml}
-        </div>
-      </section>
-    `;
-  },
-  
-  renderRecommendations() {
-    if (!State.allMovies.length) {
-      return '<p class="no-results">Tidak ada rekomendasi</p>';
+    renderEpisodes() {
+        if (!State.episodes.length) return '';
+        
+        const episodes = State.filteredEpisodes;
+        
+        const episodesHtml = episodes.map(ep => {
+            const isActive = ep.episode_number === State.currentEpisode;
+            return `
+                <div class="episode-card ${isActive ? 'active' : ''}" 
+                     onclick="App.changeEpisode(${ep.episode_number})"
+                     data-episode="${ep.episode_number}">
+                    <div class="episode-number">${ep.episode_number}</div>
+                    <div class="episode-info">
+                        <div class="episode-title">${this.escape(ep.title) || 'Episode ' + ep.episode_number}</div>
+                        <div class="episode-duration">
+                            <i class="fas fa-clock"></i> ${ep.duration || '24'} menit
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        let toggleButton = '';
+        if (State.hasMoreEpisodes) {
+            toggleButton = `
+                <div class="episodes-toggle">
+                    <button class="toggle-episodes-btn" onclick="App.showMoreEpisodes()">
+                        <i class="fas fa-chevron-down"></i> Tampilkan ${State.hiddenCount} Episode Lainnya
+                    </button>
+                </div>
+            `;
+        } else if (State.episodes.length > CONFIG.EPISODES_PER_PAGE && State.showAllEpisodes) {
+            toggleButton = `
+                <div class="episodes-toggle">
+                    <button class="toggle-episodes-btn" onclick="App.showLessEpisodes()">
+                        <i class="fas fa-chevron-up"></i> Tampilkan Lebih Sedikit
+                    </button>
+                </div>
+            `;
+        }
+        
+        return `
+            <section class="episodes-section">
+                <h2 class="section-title">
+                    <i class="fas fa-list"></i> Daftar Episode
+                    <span>${State.episodes.length} episode</span>
+                </h2>
+                <div class="episodes-grid">
+                    ${episodesHtml}
+                </div>
+                ${toggleButton}
+            </section>
+        `;
+    },
+    
+    renderRecommendations() {
+        if (!State.allMovies.length) return '';
+        
+        const recommendations = State.allMovies
+            .filter(m => m.id !== movieId)
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 6);
+        
+        if (!recommendations.length) return '';
+        
+        const html = recommendations.map(m => `
+            <div class="recommend-card" onclick="location.href='player.html?id=${m.id}'">
+                <img src="${m.thumbnail || ''}" alt="${this.escape(m.title)}" 
+                     onerror="this.src='https://via.placeholder.com/300x450?text=No+Image'">
+                <div class="recommend-info">
+                    <h4>${this.escape(m.title)}</h4>
+                    <p><i class="fas fa-eye"></i> ${this.formatNumber(m.views)}</p>
+                </div>
+            </div>
+        `).join('');
+        
+        return `
+            <section class="recommendations-section">
+                <h2 class="section-title"><i class="fas fa-thumbs-up"></i> Rekomendasi Lainnya</h2>
+                <div class="recommendations-grid">${html}</div>
+            </section>
+        `;
     }
-    
-    const recommendations = State.allMovies
-      .filter(m => m.id !== movieId)
-      .sort(() => 0.5 - Math.random())
-      .slice(0, CONFIG.MAX_RECOMMENDATIONS);
-    
-    const recommendationsHtml = recommendations.map(movie => {
-      const thumbnail = movie.thumbnail || 'https://via.placeholder.com/300x450?text=No+Image';
-      
-      return `
-        <div class="recommend-card" 
-             onclick="window.location.href='player.html?id=${movie.id}'"
-             role="button"
-             tabindex="0"
-             aria-label="${movie.title}">
-          <img src="${thumbnail}" alt="${movie.title}" loading="lazy">
-          <div class="recommend-info">
-            <h4>${movie.title}</h4>
-            <p>
-              <i class="fas fa-eye" aria-hidden="true"></i>
-              ${this.formatNumber(movie.views || 0)} ditonton
-            </p>
-          </div>
-        </div>
-      `;
-    }).join('');
-    
-    return `
-      <section class="recommendations-section" aria-label="Rekomendasi">
-        <h2 class="section-title">
-          <i class="fas fa-thumbs-up" aria-hidden="true"></i>
-          Rekomendasi Lainnya
-        </h2>
-        <div class="recommendations-grid">
-          ${recommendationsHtml}
-        </div>
-      </section>
-    `;
-  },
-  
-  renderComments() {
-    if (!State.comments.length) {
-      return '<p class="no-results">Belum ada komentar. Jadilah yang pertama!</p>';
-    }
-    
-    const commentsHtml = State.comments.map(comment => `
-      <div class="comment-item">
-        <div class="comment-avatar">
-          <i class="fas fa-user" aria-hidden="true"></i>
-        </div>
-        <div class="comment-content">
-          <div class="comment-header">
-            <span class="comment-author">${comment.username || 'Pengguna'}</span>
-            <span class="comment-date">${this.formatDate(comment.created_at)}</span>
-          </div>
-          <p class="comment-text">${comment.content}</p>
-          <div class="comment-actions">
-            <button class="comment-action" onclick="Player.likeComment('${comment.id}')">
-              <i class="far fa-heart" aria-hidden="true"></i>
-              ${comment.likes || 0}
-            </button>
-          </div>
-        </div>
-      </div>
-    `).join('');
-    
-    return `
-      <section class="comments-section" aria-label="Komentar">
-        <h2 class="section-title">
-          <i class="fas fa-comments" aria-hidden="true"></i>
-          Komentar (${State.comments.length})
-        </h2>
-        
-        <div class="comment-form">
-          <div class="comment-avatar">
-            <i class="fas fa-user" aria-hidden="true"></i>
-          </div>
-          <div class="comment-input-wrapper">
-            <input type="text" 
-                   id="commentInput" 
-                   placeholder="Tulis komentar Anda..." 
-                   maxlength="${CONFIG.MAX_COMMENT_LENGTH}"
-                   aria-label="Tulis komentar">
-            <button onclick="Player.postComment()" aria-label="Kirim komentar">
-              <i class="fas fa-paper-plane" aria-hidden="true"></i>
-              Kirim
-            </button>
-          </div>
-        </div>
-        
-        <div class="comments-list">
-          ${commentsHtml}
-        </div>
-      </section>
-    `;
-  },
-  
-  renderMainContent() {
-    if (!State.currentMovie) return;
-    
-    const movie = State.currentMovie;
-    const year = movie.year || '-';
-    
-    const html = `
-      <div class="video-container">
-        <video id="videoPlayer" class="video-player" controls controlslist="nodownload">
-          <source src="${State.videoUrl}" type="video/mp4">
-          Browser Anda tidak mendukung tag video.
-        </video>
-      </div>
-      
-      <div class="video-info-bar">
-        <div class="video-stats">
-          <div class="stat-item">
-            <i class="fas fa-eye" aria-hidden="true"></i>
-            <span><strong>${this.formatNumber(movie.views || 0)}</strong> ditonton</span>
-          </div>
-          <div class="stat-item">
-            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
-            <span><strong>${year}</strong></span>
-          </div>
-          ${movie.duration ? `
-          <div class="stat-item">
-            <i class="fas fa-clock" aria-hidden="true"></i>
-            <span><strong>${movie.duration}</strong> menit</span>
-          </div>
-          ` : ''}
-          ${movie.rating ? `
-          <div class="stat-item">
-            <i class="fas fa-star" aria-hidden="true"></i>
-            <span><strong>${movie.rating}</strong> / 10</span>
-          </div>
-          ` : ''}
-        </div>
-        
-        <div class="video-actions">
-          <button class="action-btn" onclick="Player.share()" aria-label="Bagikan">
-            <i class="fas fa-share-alt" aria-hidden="true"></i>
-            Bagikan
-          </button>
-          <button class="action-btn primary" onclick="Player.download()" aria-label="Unduh">
-            <i class="fas fa-download" aria-hidden="true"></i>
-            Unduh
-          </button>
-        </div>
-      </div>
-      
-      <section class="movie-details" aria-label="Detail Film">
-        <h1 class="movie-title">${movie.title}</h1>
-        
-        <div class="movie-meta">
-          <div class="meta-item">
-            <i class="fas fa-film" aria-hidden="true"></i>
-            <span>Kategori: <strong>${movie.category === 'film' ? 'Film' : 'Donghua'}</strong></span>
-          </div>
-          ${movie.year ? `
-          <div class="meta-item">
-            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
-            <span>Tahun: <strong>${movie.year}</strong></span>
-          </div>
-          ` : ''}
-          ${movie.duration ? `
-          <div class="meta-item">
-            <i class="fas fa-clock" aria-hidden="true"></i>
-            <span>Durasi: <strong>${movie.duration} menit</strong></span>
-          </div>
-          ` : ''}
-          ${movie.rating ? `
-          <div class="meta-item">
-            <i class="fas fa-star" aria-hidden="true"></i>
-            <span>Rating: <strong>${movie.rating}/10</strong></span>
-          </div>
-          ` : ''}
-        </div>
-        
-        <p class="movie-description">${movie.description || 'Deskripsi tidak tersedia.'}</p>
-        
-        ${State.episodes.length > 0 ? `
-        <div class="movie-tags">
-          <span class="tag">
-            <i class="fas fa-list" aria-hidden="true"></i>
-            ${State.episodes.length} Episode
-          </span>
-        </div>
-        ` : ''}
-      </section>
-      
-      ${this.renderEpisodes()}
-      ${this.renderRecommendations()}
-      ${this.renderComments()}
-    `;
-    
-    DOM.updateContent(html);
-    
-    // Initialize video element
-    const videoElement = document.getElementById('videoPlayer');
-    if (videoElement) {
-      videoElement.addEventListener('error', Player.handleVideoError);
-    }
-  }
 };
 
 // =====================================================
-// PLAYER ACTIONS
+// APP
 // =====================================================
-const Player = {
-  async init() {
-    DOM.showLoading();
+const App = {
+    async init() {
+        console.log('App starting...');
+        DOM.showLoading();
+        
+        try {
+            // Load data
+            const [movie, episodes, allMovies] = await Promise.all([
+                API.getMovie(),
+                API.getEpisodes(),
+                API.getAllMovies()
+            ]);
+            
+            State.movie = movie;
+            State.episodes = episodes;
+            State.allMovies = allMovies;
+            
+            // Validasi episode
+            if (State.episodes.length > 0) {
+                // Cek apakah episode yang diminta valid
+                const episodeExists = State.episodes.some(ep => ep.episode_number === State.currentEpisode);
+                if (!episodeExists) {
+                    State.currentEpisode = State.episodes[0].episode_number;
+                    // Update URL
+                    this.updateUrl(State.currentEpisode);
+                }
+            }
+            
+            // Render
+            UIRenderer.render();
+            
+            // Update views
+            API.updateViews(movie.views).catch(console.warn);
+            
+        } catch (error) {
+            console.error('Init error:', error);
+            DOM.showError('Gagal memuat data: ' + error.message);
+        }
+    },
     
-    try {
-      await this.loadData();
-      
-      if (State.currentMovie) {
-        UIRenderer.renderMainContent();
-        this.setupEventListeners();
-        await DataService.updateViews();
-      }
-    } catch (error) {
-      console.error('[Player] Initialization error:', error);
-      showError('Gagal memuat data. Silakan coba lagi.');
-    } finally {
-      DOM.hideLoading();
+    updateUrl(episode) {
+        const url = new URL(window.location);
+        url.searchParams.set('ep', episode);
+        window.history.pushState({}, '', url);
+    },
+    
+    changeEpisode(episodeNumber) {
+        console.log('Changing to episode:', episodeNumber);
+        
+        // Update state
+        State.currentEpisode = episodeNumber;
+        
+        // Update URL
+        this.updateUrl(episodeNumber);
+        
+        // Dapatkan URL video baru
+        const newVideoUrl = State.getCurrentVideoUrl();
+        
+        // Update video player
+        const videoContainer = document.querySelector('.video-container');
+        if (videoContainer) {
+            videoContainer.outerHTML = VideoRenderer.render(newVideoUrl, State.movie.thumbnail);
+        }
+        
+        // Update active state di episode cards
+        document.querySelectorAll('.episode-card').forEach(card => {
+            const ep = parseInt(card.dataset.episode);
+            if (ep === episodeNumber) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+        
+        // Scroll ke video
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        DOM.toast('Episode ' + episodeNumber);
+    },
+    
+    showMoreEpisodes() {
+        State.showAllEpisodes = true;
+        const section = document.querySelector('.episodes-section');
+        if (section) {
+            section.outerHTML = UIRenderer.renderEpisodes();
+        }
+    },
+    
+    showLessEpisodes() {
+        State.showAllEpisodes = false;
+        const section = document.querySelector('.episodes-section');
+        if (section) {
+            section.outerHTML = UIRenderer.renderEpisodes();
+        }
+    },
+    
+    share() {
+        const modal = document.getElementById('shareModal');
+        const input = document.getElementById('shareLink');
+        if (modal && input) {
+            input.value = window.location.href;
+            modal.classList.add('active');
+        }
     }
-  },
-  
-  async loadData() {
-    State.currentMovie = await DataService.fetchMovie();
-    State.episodes = await DataService.fetchEpisodes();
-    State.allMovies = await DataService.fetchAllMovies();
-    State.comments = await DataService.fetchComments();
-    
-    // Set current episode
-    State.currentEpisode = episodeParam;
-    if (episodeParam > State.totalEpisodes) {
-      State.currentEpisode = 1;
-    }
-  },
-  
-  changeEpisode(episode) {
-    if (episode === State.currentEpisode) return;
-    
-    State.currentEpisode = episode;
-    const newUrl = `player.html?id=${movieId}&ep=${episode}`;
-    window.history.pushState({}, '', newUrl);
-    
-    // Update video source
-    const videoElement = document.getElementById('videoPlayer');
-    if (videoElement) {
-      videoElement.src = State.videoUrl;
-      videoElement.load();
-      videoElement.play();
-    }
-    
-    // Re-render to update active state
-    UIRenderer.renderMainContent();
-  },
-  
-  share() {
-    if (!State.currentMovie) return;
-    
-    const modal = DOM.shareModal;
-    const linkInput = DOM.shareLink;
-    
-    if (modal && linkInput) {
-      linkInput.value = window.location.href;
-      modal.classList.add('active');
-    }
-  },
-  
-  download() {
-    if (!State.videoUrl) {
-      showToast('Video tidak tersedia untuk diunduh', 'error');
-      return;
-    }
-    
-    const link = document.createElement('a');
-    link.href = State.videoUrl;
-    link.download = `${State.currentMovie.title} - Episode ${State.currentEpisode}.mp4`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Download dimulai...');
-  },
-  
-  async postComment() {
-    const input = document.getElementById('commentInput');
-    if (!input) return;
-    
-    const content = input.value.trim();
-    
-    if (!content) {
-      showToast('Komentar tidak boleh kosong', 'error');
-      return;
-    }
-    
-    if (content.length > CONFIG.MAX_COMMENT_LENGTH) {
-      showToast(`Komentar maksimal ${CONFIG.MAX_COMMENT_LENGTH} karakter`, 'error');
-      return;
-    }
-    
-    try {
-      await DataService.postComment(content);
-      
-      input.value = '';
-      showToast('Komentar berhasil diposting');
-      
-      // Refresh comments
-      State.comments = await DataService.fetchComments();
-      UIRenderer.renderMainContent();
-      
-    } catch (error) {
-      console.error('[Player] Error posting comment:', error);
-      showToast('Gagal memposting komentar', 'error');
-    }
-  },
-  
-  async likeComment(commentId) {
-    try {
-      const comment = State.comments.find(c => c.id === commentId);
-      if (!comment) return;
-      
-      await DataService.likeComment(commentId, comment.likes);
-      
-      // Refresh comments
-      State.comments = await DataService.fetchComments();
-      UIRenderer.renderMainContent();
-      
-    } catch (error) {
-      console.error('[Player] Error liking comment:', error);
-    }
-  },
-  
-  handleVideoError(e) {
-    console.error('[Player] Video error:', e);
-    showToast('Gagal memuat video', 'error');
-  },
-  
-  setupEventListeners() {
-    const videoElement = document.getElementById('videoPlayer');
-    if (!videoElement) return;
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      // Space for play/pause
-      if (e.code === 'Space' && !e.target.matches('input, textarea')) {
-        e.preventDefault();
-        videoElement.paused ? videoElement.play() : videoElement.pause();
-      }
-      
-      // F for fullscreen
-      if (e.code === 'KeyF') {
-        e.preventDefault();
-        document.fullscreenElement 
-          ? document.exitFullscreen() 
-          : videoElement.requestFullscreen();
-      }
-      
-      // M for mute
-      if (e.code === 'KeyM') {
-        e.preventDefault();
-        videoElement.muted = !videoElement.muted;
-      }
-    });
-  }
 };
 
 // =====================================================
-// SHARE FUNCTIONS
+// GLOBAL FUNCTIONS (untuk modal share)
 // =====================================================
 window.shareVia = (platform) => {
-  const url = encodeURIComponent(window.location.href);
-  const title = encodeURIComponent(State.currentMovie?.title || 'FilmKu');
-  
-  const shareUrls = {
-    whatsapp: `https://wa.me/?text=${title}%20-%20${url}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-    twitter: `https://twitter.com/intent/tweet?text=${title}&url=${url}`,
-    telegram: `https://t.me/share/url?url=${url}&text=${title}`
-  };
-  
-  const shareUrl = shareUrls[platform];
-  if (shareUrl) {
-    window.open(shareUrl, '_blank', 'width=600,height=400');
-    closeModal();
-  }
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(State.movie?.title || 'FilmKu');
+    
+    const links = {
+        whatsapp: `https://wa.me/?text=${title}%20-%20${url}`,
+        facebook: `https://www.facebook.com/sharer.php?u=${url}`,
+        twitter: `https://twitter.com/intent/tweet?text=${title}&url=${url}`,
+        telegram: `https://t.me/share/url?url=${url}&text=${title}`
+    };
+    
+    if (links[platform]) {
+        window.open(links[platform], '_blank', 'width=600,height=400');
+        closeModal();
+    }
 };
 
 window.copyShareLink = () => {
-  const linkInput = document.getElementById('shareLink');
-  if (linkInput) {
-    linkInput.select();
-    document.execCommand('copy');
-    showToast('Link berhasil disalin!');
-    closeModal();
-  }
+    const input = document.getElementById('shareLink');
+    if (input) {
+        input.select();
+        document.execCommand('copy');
+        DOM.toast('Link disalin');
+        closeModal();
+    }
 };
 
 window.closeModal = () => {
-  const modal = document.getElementById('shareModal');
-  if (modal) {
-    modal.classList.remove('active');
-  }
+    document.getElementById('shareModal')?.classList.remove('active');
 };
 
 // =====================================================
-// HELPER FUNCTIONS
-// =====================================================
-function showToast(message, type = 'success') {
-  if (!DOM.toast || !DOM.toastMessage) return;
-  
-  DOM.toastMessage.textContent = message;
-  DOM.toast.classList.add('show');
-  
-  if (type === 'error') {
-    DOM.toast.classList.add('error');
-  } else {
-    DOM.toast.classList.remove('error');
-  }
-  
-  setTimeout(() => {
-    DOM.toast.classList.remove('show');
-  }, CONFIG.TOAST_DURATION);
-}
-
-function showError(message) {
-  DOM.updateContent(`
-    <div class="error-message">
-      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-      <a href="index.html" class="back-btn" aria-label="Kembali ke beranda">
-        <i class="fas fa-home" aria-hidden="true"></i>
-        Kembali ke Beranda
-      </a>
-    </div>
-  `);
-}
-
-// =====================================================
-// EXPOSE GLOBALS
-// =====================================================
-window.Player = Player;
-window.shareVia = shareVia;
-window.copyShareLink = copyShareLink;
-window.closeModal = closeModal;
-
-// =====================================================
-// INITIALIZE
+// START
 // =====================================================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[Player] Initializing...');
-  Player.init();
-});
-
-// Handle popstate (back/forward)
-window.addEventListener('popstate', () => {
-  window.location.reload();
+    App.init();
 });
