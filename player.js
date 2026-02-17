@@ -1,6 +1,6 @@
 /**
  * player.js - Halaman Player FilmKu
- * Version: 3.0 - Fixed Episode Selection, No Comments
+ * Version: 3.1 - Added OK.ru Support
  */
 
 // =====================================================
@@ -169,6 +169,11 @@ const VideoRenderer = {
             return '<div class="video-error">Tidak ada video</div>';
         }
         
+        // OK.ru
+        if (videoUrl.includes('ok.ru')) {
+            return this.renderOkRu(videoUrl);
+        }
+        
         // YouTube
         if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
             return this.renderYouTube(videoUrl);
@@ -196,6 +201,52 @@ const VideoRenderer = {
         
         // Default: direct video
         return this.renderDirectVideo(videoUrl, poster);
+    },
+    
+    // ============= OK.ru SUPPORT =============
+    renderOkRu(url) {
+        // Bersihkan URL dari parameter tambahan
+        let cleanUrl = url.split('?')[0];
+        let videoId = '';
+        let embedUrl = '';
+        
+        // Coba extract ID dari berbagai format URL OK.ru
+        const match = cleanUrl.match(/ok\.ru\/(?:video|live)\/(\d+)/) || 
+                      cleanUrl.match(/ok\.ru\/videoembed\/(\d+)/);
+        
+        if (match) {
+            videoId = match[1];
+            embedUrl = `https://ok.ru/videoembed/${videoId}`;
+        } else {
+            // Jika tidak bisa extract ID, coba konversi URL ke format embed
+            if (cleanUrl.includes('/video/')) {
+                embedUrl = cleanUrl.replace('/video/', '/videoembed/');
+            } else if (cleanUrl.includes('/live/')) {
+                embedUrl = cleanUrl.replace('/live/', '/videoembed/');
+            } else {
+                // Fallback: gunakan URL asli
+                embedUrl = cleanUrl;
+            }
+        }
+        
+        // Tambahkan parameter untuk pengalaman yang lebih baik
+        // autoplay=1 untuk memutar otomatis, loop=0 untuk tidak mengulang
+        embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+        
+        return `
+            <div class="video-container">
+                <iframe 
+                    src="${embedUrl}"
+                    class="video-iframe okru-iframe"
+                    allowfullscreen
+                    allow="autoplay; encrypted-media; fullscreen"
+                    frameborder="0"
+                    scrolling="no"
+                    webkitallowfullscreen
+                    mozallowfullscreen
+                ></iframe>
+            </div>
+        `;
     },
     
     renderYouTube(url) {
@@ -548,17 +599,25 @@ const App = {
     
     showMoreEpisodes() {
         State.showAllEpisodes = true;
-        const section = document.querySelector('.episodes-section');
-        if (section) {
-            section.outerHTML = UIRenderer.renderEpisodes();
-        }
+        this.rerenderEpisodesSection();
     },
     
     showLessEpisodes() {
         State.showAllEpisodes = false;
+        this.rerenderEpisodesSection();
+    },
+    
+    rerenderEpisodesSection() {
         const section = document.querySelector('.episodes-section');
         if (section) {
-            section.outerHTML = UIRenderer.renderEpisodes();
+            const newSectionHtml = UIRenderer.renderEpisodes();
+            // Buat temporary div untuk parsing HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = newSectionHtml;
+            const newSection = temp.firstElementChild;
+            
+            // Replace section lama dengan yang baru
+            section.parentNode.replaceChild(newSection, section);
         }
     },
     
