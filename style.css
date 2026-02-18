@@ -1,62 +1,59 @@
 /* =====================================================
    style.css - FilmKu Professional Stylesheet
-   Version: 3.0
+   Version: 5.0 - Professional, Lightweight, Animated
    ===================================================== */
 
 /* =====================================================
    RESET & VARIABLES
    ===================================================== */
 :root {
-  /* Colors */
-  --color-primary: #ff3c3c;
-  --color-primary-dark: #ff1f1f;
-  --color-primary-light: #ff5252;
-  --color-background: #0a0a0a;
-  --color-surface: #141414;
-  --color-surface-light: #1a1a1a;
-  --color-surface-lighter: #252525;
-  --color-border: #2a2a2a;
+  /* Colors - Modern & Clean */
+  --color-primary: #e50914;
+  --color-primary-dark: #b2070f;
+  --color-primary-light: #f40612;
+  --color-background: #0f0f0f;
+  --color-surface: #1a1a1a;
+  --color-surface-light: #252525;
+  --color-surface-lighter: #2f2f2f;
+  --color-border: #333333;
   --color-text: #ffffff;
-  --color-text-secondary: #888888;
-  --color-text-muted: #666666;
+  --color-text-secondary: #a0a0a0;
+  --color-text-muted: #6c6c6c;
   
-  /* Category Colors */
-  --color-film: #2196F3;
-  --color-donghua: #9C27B0;
-  --color-rekomendasi: #FFC107;
-  --color-populer: #FF5722;
-  --color-terbaru: #4CAF50;
+  /* Category Colors - Soft */
+  --color-film: #3b82f6;
+  --color-donghua: #a855f7;
   
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
-  --spacing-2xl: 24px;
-  --spacing-3xl: 32px;
+  /* Spacing - Fluid */
+  --spacing-xs: clamp(2px, 0.5vw, 4px);
+  --spacing-sm: clamp(4px, 1vw, 8px);
+  --spacing-md: clamp(8px, 1.5vw, 12px);
+  --spacing-lg: clamp(12px, 2vw, 16px);
+  --spacing-xl: clamp(16px, 3vw, 24px);
+  --spacing-2xl: clamp(20px, 4vw, 32px);
   
-  /* Border Radius */
-  --radius-sm: 6px;
+  /* Border Radius - Smooth */
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 20px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
   
-  /* Transitions */
-  --transition-fast: 0.2s ease;
-  --transition-normal: 0.3s ease;
-  
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 20px rgba(255, 60, 60, 0.15);
-  --shadow-primary: 0 5px 15px rgba(255, 60, 60, 0.3);
+  /* Shadows - Subtle */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(229, 9, 20, 0.2);
+  --shadow-hover: 0 12px 28px rgba(229, 9, 20, 0.3);
   
   /* Layout */
-  --header-height: 70px;
+  --header-height: 60px;
   --container-max-width: 1400px;
-  --grid-gap: 20px;
+  --grid-gap: clamp(8px, 1.5vw, 20px);
+  
+  /* Transitions & Animations */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* =====================================================
@@ -70,6 +67,13 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 18px; /* Diperbesar dari 16px menjadi 18px untuk desktop */
+  }
 }
 
 body {
@@ -78,46 +82,56 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* =====================================================
-   TYPOGRAPHY
-   ===================================================== */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-/* =====================================================
-   HEADER
+   HEADER - Clean & Sticky
    ===================================================== */
 .site-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md) var(--spacing-2xl);
-  background: rgba(18, 18, 18, 0.95);
+  justify-content: space-between;
+  padding: 0 var(--spacing-xl);
+  height: var(--header-height);
+  background: rgba(15, 15, 15, 0.95);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--color-border);
-  height: var(--header-height);
+  gap: var(--spacing-lg);
+}
+
+@media (min-width: 768px) {
+  .site-header {
+    height: 80px; /* Header lebih tinggi di desktop */
+  }
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 .logo-img {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
   object-fit: cover;
   border: 2px solid var(--color-primary);
   transition: transform var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  .logo-img {
+    width: 50px; /* Logo lebih besar di desktop */
+    height: 50px;
+  }
 }
 
 .logo-img:hover {
@@ -125,18 +139,33 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo {
-  font-size: 24px;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b6b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;
 }
 
+@media (min-width: 768px) {
+  .logo {
+    font-size: 2rem; /* Logo lebih besar di desktop */
+  }
+}
+
 /* =====================================================
-   SEARCH
+   SEARCH - Minimalist
    ===================================================== */
 .search-wrapper {
   position: relative;
-  width: 300px;
+  flex: 1;
+  max-width: 400px;
+}
+
+@media (min-width: 768px) {
+  .search-wrapper {
+    max-width: 500px; /* Search lebih lebar di desktop */
+  }
 }
 
 .search-icon {
@@ -145,51 +174,72 @@ h1, h2, h3, h4, h5, h6 {
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-text-muted);
-  font-size: 14px;
-  pointer-events: none;
+  font-size: 0.9rem;
+  transition: color var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  .search-icon {
+    font-size: 1.2rem; /* Icon search lebih besar di desktop */
+    left: calc(var(--spacing-md) * 1.5);
+  }
 }
 
 #searchInput {
   width: 100%;
-  padding: 10px 16px 10px 38px;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  background: var(--color-surface-light);
+  background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 0.9rem;
   transition: all var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  #searchInput {
+    padding: 1rem 1.5rem 1rem 3.5rem; /* Padding lebih besar di desktop */
+    font-size: 1.1rem; /* Font lebih besar di desktop */
+  }
 }
 
 #searchInput:focus {
   outline: none;
   border-color: var(--color-primary);
-  background: var(--color-surface-lighter);
-  box-shadow: 0 0 0 3px rgba(255, 60, 60, 0.1);
+  background: var(--color-surface-light);
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
 }
 
-#searchInput::placeholder {
-  color: var(--color-text-muted);
+#searchInput:focus + .search-icon {
+  color: var(--color-primary);
 }
 
 /* =====================================================
-   NAVIGATION TABS
+   TABS & CATEGORY - Smooth Navigation
    ===================================================== */
 .tabs, .kategori {
   display: flex;
   gap: var(--spacing-sm);
-  padding: var(--spacing-lg) var(--spacing-2xl);
-  justify-content: center;
-  flex-wrap: wrap;
+  padding: var(--spacing-md) var(--spacing-xl);
   background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .tabs, .kategori {
+    padding: var(--spacing-xl) var(--spacing-2xl); /* Padding lebih besar di desktop */
+    gap: var(--spacing-lg); /* Gap lebih besar di desktop */
+  }
 }
 
 .tabs button, .kategori button {
-  padding: 8px 20px;
+  padding: 0.6rem 1.4rem;
   border: none;
   border-radius: var(--radius-full);
-  background: var(--color-surface-light);
+  background: transparent;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -197,49 +247,75 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: var(--spacing-sm);
   border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .tabs button, .kategori button {
+    padding: 1rem 2.5rem; /* Padding lebih besar di desktop */
+    font-size: 1.2rem; /* Font lebih besar di desktop */
+    gap: var(--spacing-md); /* Gap lebih besar di desktop */
+  }
+}
+
+.tabs button::before, .kategori button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.tabs button:hover::before, .kategori button:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .tabs button i, .kategori button i {
-  font-size: 14px;
+  font-size: 0.9rem;
+  transition: transform var(--transition-fast);
 }
 
-.tabs button:hover, .kategori button:hover {
-  background: var(--color-surface-lighter);
-  color: var(--color-text);
+@media (min-width: 768px) {
+  .tabs button i, .kategori button i {
+    font-size: 1.2rem; /* Icon lebih besar di desktop */
+  }
+}
+
+.tabs button:hover i, .kategori button:hover i {
+  transform: scale(1.1);
 }
 
 .tabs button.active, .kategori button.active {
   background: var(--color-primary);
-  color: var(--color-text);
+  color: white;
+  box-shadow: var(--shadow-lg);
+  animation: buttonPop 0.3s ease;
+}
+
+@keyframes buttonPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 /* =====================================================
-   MOVIES GRID
+   MOVIES GRID - Responsive & Clean
    ===================================================== */
 .movies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--grid-gap);
-  padding: var(--spacing-2xl);
+  padding: var(--grid-gap);
   max-width: var(--container-max-width);
   margin: 0 auto;
-}
-
-/* =====================================================
-   MOVIE CARD
-   ===================================================== */
-.movie-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  position: relative;
-  border: 1px solid var(--color-border);
-  animation: fadeIn var(--transition-normal);
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  animation: fadeIn 0.5s ease;
 }
 
 @keyframes fadeIn {
@@ -253,9 +329,79 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@media (min-width: 480px) {
+  .movies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .movies-grid {
+    grid-template-columns: repeat(4, 1fr); /* DIUBAH: 4 kolom di desktop */
+    gap: 25px; /* Gap lebih besar */
+    padding: 30px; /* Padding lebih besar */
+  }
+}
+
+@media (min-width: 1024px) {
+  .movies-grid {
+    grid-template-columns: repeat(4, 1fr); /* Tetap 4 kolom di layar lebih besar */
+    gap: 30px; /* Gap lebih besar */
+    padding: 35px; /* Padding lebih besar */
+  }
+}
+
+@media (min-width: 1200px) {
+  .movies-grid {
+    grid-template-columns: repeat(4, 1fr); /* Tetap 4 kolom di layar sangat besar */
+    max-width: 1200px; /* Batasi lebar maksimal */
+    gap: 35px;
+  }
+}
+
+/* =====================================================
+   MOVIE CARD - Elegant & Interactive
+   ===================================================== */
+.movie-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  animation: cardAppear 0.5s ease;
+  animation-fill-mode: both;
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger animation for cards */
+.movie-card:nth-child(1) { animation-delay: 0.05s; }
+.movie-card:nth-child(2) { animation-delay: 0.1s; }
+.movie-card:nth-child(3) { animation-delay: 0.15s; }
+.movie-card:nth-child(4) { animation-delay: 0.2s; }
+.movie-card:nth-child(5) { animation-delay: 0.25s; }
+.movie-card:nth-child(6) { animation-delay: 0.3s; }
+.movie-card:nth-child(7) { animation-delay: 0.35s; }
+.movie-card:nth-child(8) { animation-delay: 0.4s; }
+.movie-card:nth-child(9) { animation-delay: 0.45s; }
+.movie-card:nth-child(10) { animation-delay: 0.5s; }
+
 .movie-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--shadow-hover);
   border-color: var(--color-primary);
 }
 
@@ -263,57 +409,18 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   overflow: hidden;
   aspect-ratio: 2/3;
-  background: var(--color-surface-lighter);
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-light) 100%);
 }
 
 .movie-poster img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-normal);
+  transition: transform var(--transition-slow);
 }
 
 .movie-card:hover .movie-poster img {
-  transform: scale(1.03);
-}
-
-.movie-info {
-  padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
-  flex: 1;
-}
-
-.movie-title {
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--color-text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-  margin-bottom: var(--spacing-sm);
-}
-
-.movie-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  flex-wrap: wrap;
-}
-
-.movie-meta i {
-  font-size: 11px;
-  color: var(--color-primary);
-  margin-right: 2px;
-}
-
-.movie-year, .views-badge, .episode-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  transform: scale(1.1);
 }
 
 /* Category Badge */
@@ -321,117 +428,200 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   top: var(--spacing-sm);
   right: var(--spacing-sm);
-  padding: 4px 10px;
+  padding: 0.3rem 0.8rem;
   border-radius: var(--radius-full);
-  font-size: 11px;
+  font-size: 0.7rem;
   font-weight: 600;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(4px);
-  color: var(--color-text);
+  color: white;
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: badgeSlide 0.3s ease;
+}
+
+@keyframes badgeSlide {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .movie-category.film {
-  background: rgba(33, 150, 243, 0.9);
+  background: rgba(59, 130, 246, 0.9);
 }
 
 .movie-category.donghua {
-  background: rgba(156, 39, 176, 0.9);
+  background: rgba(168, 85, 247, 0.9);
+}
+
+/* Movie Info */
+.movie-info {
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .movie-info {
+    padding: var(--spacing-xl); /* Padding lebih besar di desktop */
+  }
+}
+
+.movie-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: var(--spacing-xs);
+  transition: color var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  .movie-title {
+    font-size: 1.2rem; /* Judul lebih besar di desktop */
+    margin-bottom: var(--spacing-sm);
+  }
+}
+
+.movie-card:hover .movie-title {
+  color: var(--color-primary);
+}
+
+.movie-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 768px) {
+  .movie-meta {
+    font-size: 1rem; /* Meta info lebih besar di desktop */
+    gap: var(--spacing-md);
+  }
+}
+
+.movie-meta i {
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  margin-right: 2px;
+}
+
+@media (min-width: 768px) {
+  .movie-meta i {
+    font-size: 1rem; /* Icon meta lebih besar di desktop */
+  }
 }
 
 /* =====================================================
-   STATE COMPONENTS
+   LOADING & EMPTY STATES
    ===================================================== */
-.loading-state, .error-state, .empty-state {
+.loading-state, .empty-state {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 60px 20px;
+  padding: 4rem 2rem;
   color: var(--color-text-secondary);
-  font-size: 15px;
+  font-size: 1rem;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  margin: var(--spacing-2xl);
+  animation: pulseGlow 2s infinite;
 }
 
-.loading-state i, .error-state i, .empty-state i {
-  font-size: 48px;
-  margin-bottom: var(--spacing-lg);
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 9, 20, 0.1); }
+  50% { box-shadow: 0 0 20px 0 rgba(229, 9, 20, 0.2); }
+}
+
+.loading-state i {
+  font-size: 2.5rem;
   color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+  animation: spin 1s linear infinite;
 }
 
-.error-state {
-  color: #ff6b6b;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.retry-btn {
-  margin-top: var(--spacing-lg);
-  padding: 10px 24px;
-  background: var(--color-primary);
-  color: var(--color-text);
-  border: none;
-  border-radius: var(--radius-full);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.retry-btn:hover {
-  background: var(--color-primary-dark);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary);
+@media (min-width: 768px) {
+  .loading-state, .empty-state {
+    padding: 6rem 3rem;
+    font-size: 1.4rem;
+  }
+  
+  .loading-state i {
+    font-size: 4rem;
+  }
 }
 
 /* =====================================================
-   PAGINATION
+   PAGINATION - Clean
    ===================================================== */
-.pagination-info {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--spacing-md);
-}
-
-.pagination-info strong {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
 .pagination-controls {
   grid-column: 1 / -1;
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: var(--spacing-lg);
+  justify-content: center;
+  gap: var(--spacing-md);
   padding: var(--spacing-xl);
+  margin-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (min-width: 768px) {
+  .pagination-controls {
+    gap: var(--spacing-2xl);
+    padding: var(--spacing-2xl) var(--spacing-xl);
+    margin-top: var(--spacing-xl);
+  }
 }
 
 .pagination-btn {
-  padding: 8px 24px;
+  padding: 0.6rem 1.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  background: var(--color-surface-light);
+  background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
+  min-width: 100px;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .pagination-btn {
+    padding: 1rem 2.5rem; /* Padding lebih besar di desktop */
+    font-size: 1.2rem; /* Font lebih besar di desktop */
+    min-width: 150px; /* Lebar minimum lebih besar */
+    gap: var(--spacing-md);
+  }
 }
 
 .pagination-btn:hover:not(:disabled) {
   background: var(--color-primary);
   border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .pagination-btn:disabled {
@@ -441,136 +631,137 @@ h1, h2, h3, h4, h5, h6 {
 
 .page-info {
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+@media (min-width: 768px) {
+  .page-info {
+    font-size: 1.3rem; /* Page info lebih besar di desktop */
+  }
 }
 
 /* =====================================================
-   SCROLL TO TOP BUTTON
+   SCROLL TO TOP - Smooth
    ===================================================== */
 .scroll-top {
   position: fixed;
-  bottom: var(--spacing-2xl);
-  right: var(--spacing-2xl);
+  bottom: var(--spacing-xl);
+  right: var(--spacing-xl);
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
   background: var(--color-primary);
-  color: var(--color-text);
+  color: white;
   border: none;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  box-shadow: var(--shadow-primary);
-  transition: all var(--transition-fast);
+  font-size: 1.2rem;
+  box-shadow: var(--shadow-lg);
   z-index: 90;
+  transition: all var(--transition-normal);
+  animation: slideIn 0.3s ease;
 }
 
-.scroll-top:hover {
-  transform: scale(1.1);
-  background: var(--color-primary-light);
+@media (min-width: 768px) {
+  .scroll-top {
+    width: 60px; /* Lebih besar di desktop */
+    height: 60px;
+    font-size: 1.6rem;
+    bottom: 40px;
+    right: 40px;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .scroll-top.show {
   display: flex;
 }
 
+.scroll-top:hover {
+  transform: scale(1.1) translateY(-5px);
+  background: var(--color-primary-light);
+  box-shadow: 0 8px 25px rgba(229, 9, 20, 0.4);
+}
+
 /* =====================================================
-   RESPONSIVE DESIGN
+   UTILITY CLASSES
    ===================================================== */
-@media (max-width: 768px) {
-  :root {
-    --grid-gap: 16px;
+.fade-enter {
+  animation: fadeIn 0.3s ease;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =====================================================
+   MEDIA QUERIES - Fine-tuning
+   ===================================================== */
+@media (max-width: 480px) {
   .site-header {
-    padding: var(--spacing-sm) var(--spacing-lg);
+    padding: 0 var(--spacing-md);
   }
   
   .logo {
-    font-size: 20px;
+    font-size: 1.2rem;
   }
   
-  .search-wrapper {
-    width: 200px;
-  }
-  
-  .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    padding: var(--spacing-lg);
-  }
-  
-  .movie-title {
-    font-size: 14px;
-  }
-  
-  .tabs, .kategori {
-    padding: var(--spacing-md) var(--spacing-lg);
+  .logo-img {
+    width: 32px;
+    height: 32px;
   }
   
   .tabs button, .kategori button {
-    padding: 6px 16px;
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 480px) {
-  .site-header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    height: auto;
-    padding: var(--spacing-md);
-  }
-  
-  .search-wrapper {
-    width: 100%;
-  }
-  
-  .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
-    padding: var(--spacing-md);
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
   }
   
   .movie-title {
-    font-size: 13px;
+    font-size: 0.8rem;
   }
   
   .movie-meta {
-    font-size: 11px;
+    font-size: 0.7rem;
   }
   
   .pagination-controls {
-    flex-direction: column;
-    gap: var(--spacing-sm);
+    flex-wrap: wrap;
   }
   
   .pagination-btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .scroll-top {
-    bottom: var(--spacing-lg);
-    right: var(--spacing-lg);
+    min-width: 80px;
+    padding: 0.5rem 1rem;
   }
 }
 
-/* =====================================================
-   PRINT STYLES
-   ===================================================== */
-@media print {
-  .site-header,
-  .tabs,
-  .kategori,
-  .scroll-top,
-  .pagination-controls {
-    display: none;
-  }
-  
-  .movie-card {
-    break-inside: avoid;
-    page-break-inside: avoid;
+@media (max-width: 360px) {
+  .movies-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 6px;
   }
 }

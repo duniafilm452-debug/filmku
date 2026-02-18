@@ -1,89 +1,51 @@
-/**
- * script.js - Halaman Utama FilmKu
- * Versi Profesional 3.0
- * 
- * Fitur:
- * - Manajemen state yang lebih baik
- * - Error handling yang komprehensif
- * - Performance optimasi
- * - Accessibility improvements
- */
+// script.js - VERSI DIPERBAIKI dengan tabel movie_details
 
-// =====================================================
-// KONFIGURASI
-// =====================================================
 const CONFIG = {
   SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o',
-  ITEMS_PER_PAGE: 50,
-  DEBOUNCE_DELAY: 300,
-  SCROLL_THRESHOLD: 400
+  ITEMS_PER_PAGE: 20, // Diubah dari 50 menjadi 20
+  DEBOUNCE_DELAY: 300
 };
 
-// =====================================================
-// INITIALIZATION
-// =====================================================
+// Initialize Supabase
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-// =====================================================
-// STATE MANAGEMENT
-// =====================================================
+// App State
 const State = {
   movies: [],
   currentTab: 'rekomendasi',
   currentCategory: 'all',
   currentPage: 1,
-  isLoading: false,
   searchTerm: '',
+  filteredCache: null,
+  isLoading: false,
   
-  // Cache untuk hasil filter
-  _filteredCache: null,
-  
+  // Get filtered movies with caching
   getFilteredMovies() {
-    if (this._filteredCache) return this._filteredCache;
+    if (this.filteredCache) return this.filteredCache;
     
     let filtered = this.movies.filter(movie => {
-      if (!movie?.title) return false;
-      
-      const categoryMatch = this.currentCategory === 'all' || movie.category === this.currentCategory;
+      const catMatch = this.currentCategory === 'all' || movie.category === this.currentCategory;
       const searchMatch = movie.title.toLowerCase().includes(this.searchTerm.toLowerCase());
-      return categoryMatch && searchMatch;
+      return catMatch && searchMatch;
     });
-    
-    // Apply tab logic
-    switch (this.currentTab) {
-      case 'rekomendasi':
-        filtered = this._shuffleArray(filtered);
-        break;
-      case 'populer':
-        filtered = filtered
-          .filter(m => (m.views || 0) > 0)
-          .sort((a, b) => (b.views || 0) - (a.views || 0));
-        break;
-      case 'terbaru':
-        filtered.sort((a, b) => {
-          const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
-          const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
-          return dateB - dateA;
-        });
-        break;
+
+    // Apply sorting based on tab
+    if (this.currentTab === 'populer') {
+      filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (this.currentTab === 'terbaru') {
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else {
+      // For rekomendasi, randomize a bit
+      filtered = [...filtered].sort(() => Math.random() - 0.5);
     }
     
-    this._filteredCache = filtered;
+    this.filteredCache = filtered;
     return filtered;
   },
   
-  _shuffleArray(array) {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  },
-  
   invalidateCache() {
-    this._filteredCache = null;
+    this.filteredCache = null;
   },
   
   resetPagination() {
@@ -91,371 +53,212 @@ const State = {
   }
 };
 
-// =====================================================
-// DOM ELEMENTS
-// =====================================================
+// DOM Elements
 const DOM = {
   moviesList: document.getElementById('moviesList'),
   searchInput: document.getElementById('searchInput'),
   scrollTopBtn: document.getElementById('scrollTopBtn'),
-  
-  updateMoviesList(html) {
-    if (this.moviesList) this.moviesList.innerHTML = html;
+  tabButtons: {
+    rekomendasi: document.getElementById('tabRekomendasi'),
+    populer: document.getElementById('tabPopuler'),
+    terbaru: document.getElementById('tabTerbaru')
   },
-  
-  showLoading() {
-    this.updateMoviesList(`
-      <div class="loading-state" role="status" aria-label="Memuat">
-        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
-        <p>Memuat data...</p>
-      </div>
-    `);
-  },
-  
-  showError(message) {
-    this.updateMoviesList(`
-      <div class="error-state" role="alert">
-        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-        <p>${message}</p>
-        <button onclick="location.reload()" class="retry-btn">
-          <i class="fas fa-redo" aria-hidden="true"></i>
-          Coba Lagi
-        </button>
-      </div>
-    `);
-  },
-  
-  showNoResults() {
-    this.updateMoviesList(`
-      <div class="empty-state">
-        <i class="fas fa-film" aria-hidden="true"></i>
-        <p>Tidak ada film ditemukan</p>
-      </div>
-    `);
+  categoryButtons: {
+    all: document.getElementById('catAll'),
+    film: document.getElementById('catFilm'),
+    donghua: document.getElementById('catDonghua')
   }
 };
 
-// =====================================================
-// DATA FETCHING
-// =====================================================
-const DataService = {
-  async fetchMovies() {
-    try {
-      const { data, error } = await supabaseClient
-        .from('movies')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('[DataService] Error fetching movies:', error);
-      throw error;
-    }
-  },
-  
-  async fetchEpisodeCounts(movieIds) {
-    if (!movieIds.length) return {};
-    
-    try {
-      const { data: episodes, error } = await supabaseClient
-        .from('episodes')
-        .select('movie_id');
-        
-      if (error) throw error;
-      
-      const countMap = {};
-      episodes?.forEach(ep => {
-        countMap[ep.movie_id] = (countMap[ep.movie_id] || 0) + 1;
-      });
-      
-      return countMap;
-    } catch (error) {
-      console.error('[DataService] Error fetching episode counts:', error);
-      return {};
-    }
-  },
-  
-  async loadAllData() {
-    if (State.isLoading) return;
-    
-    State.isLoading = true;
-    DOM.showLoading();
-    
-    try {
-      console.log('[FilmKu] Loading movies...');
-      const movies = await this.fetchMovies();
-      
-      if (!movies.length) {
-        DOM.showNoResults();
-        return;
-      }
-      
-      const episodeCounts = await this.fetchEpisodeCounts(movies.map(m => m.id));
-      
-      State.movies = movies.map(movie => ({
-        ...movie,
-        episode_count: episodeCounts[movie.id] || 0
-      }));
-      
-      State.invalidateCache();
-      State.resetPagination();
-      UI.renderMovies();
-      
-      console.log(`[FilmKu] Loaded ${movies.length} movies successfully`);
-    } catch (error) {
-      console.error('[FilmKu] Failed to load data:', error);
-      DOM.showError('Gagal memuat data. Periksa koneksi internet Anda.');
-    } finally {
-      State.isLoading = false;
-    }
-  }
-};
-
-// =====================================================
-// UI RENDERING
-// =====================================================
+// UI Functions
 const UI = {
-  formatNumber(num) {
-    if (!num) return '0';
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'jt';
-    if (num >= 1_000) return (num / 1_000).toFixed(1) + 'rb';
-    return num.toString();
-  },
-  
+  // Create movie card HTML
   createMovieCard(movie) {
-    const year = movie.year || '-';
-    const thumbnail = movie.thumbnail || 'https://via.placeholder.com/300x450?text=No+Image';
-    const categoryLabel = movie.category === 'film' ? '🎬 Film' : '📺 Donghua';
-    const categoryClass = movie.category || 'film';
-    const episodeCount = movie.episode_count || 0;
+    const thumb = movie.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%23252525\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23666666\' font-family=\'Arial\' font-size=\'20\'%3ENo Image%3C/text%3E%3C/svg%3E';
     
-    const episodeBadge = episodeCount > 1 
-      ? `<span class="episode-badge"><i class="fas fa-list"></i> ${episodeCount} ep</span>` 
-      : '';
-    
-    const viewsBadge = movie.views 
-      ? `<span class="views-badge"><i class="fas fa-eye"></i> ${this.formatNumber(movie.views)}</span>` 
-      : '';
+    // Hitung jumlah episode jika ada
+    const episodeCount = movie.episode_urls && Array.isArray(movie.episode_urls) 
+      ? movie.episode_urls.length 
+      : (movie.episodes || 0);
     
     return `
       <article class="movie-card" onclick="window.location.href='player.html?id=${movie.id}'">
         <div class="movie-poster">
-          <img 
-            src="${thumbnail}" 
-            alt="${movie.title}" 
-            loading="lazy"
-            onerror="this.src='https://via.placeholder.com/300x450?text=Error'"
-          >
-          <span class="movie-category ${categoryClass}">${categoryLabel}</span>
+          <img src="${thumb}" alt="${movie.title}" loading="lazy" 
+               onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%23252525\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23666666\' font-family=\'Arial\' font-size=\'20\'%3EError%3C/text%3E%3C/svg%3E'">
+          <span class="movie-category ${movie.category}">${movie.category}</span>
         </div>
         <div class="movie-info">
           <h3 class="movie-title">${movie.title}</h3>
           <div class="movie-meta">
-            ${year !== '-' ? `<span class="movie-year"><i class="fas fa-calendar-alt"></i> ${year}</span>` : ''}
-            ${viewsBadge}
-            ${episodeBadge}
+            <span><i class="fas fa-eye"></i> ${movie.views || 0}</span>
+            ${episodeCount > 0 ? `<span><i class="fas fa-list"></i> ${episodeCount} eps</span>` : ''}
           </div>
         </div>
-      </article>
-    `;
+      </article>`;
   },
-  
+
+  // Render movies with pagination
   renderMovies() {
-    if (!DOM.moviesList) return;
+    const filtered = State.getFilteredMovies();
     
-    const filteredMovies = State.getFilteredMovies();
-    
-    if (!filteredMovies.length) {
-      DOM.showNoResults();
+    if (!filtered.length) {
+      DOM.moviesList.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-film"></i>
+          <p>Tidak ada film ditemukan</p>
+        </div>`;
       return;
     }
-    
-    const totalPages = Math.ceil(filteredMovies.length / CONFIG.ITEMS_PER_PAGE);
+
     const start = (State.currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
-    const end = Math.min(start + CONFIG.ITEMS_PER_PAGE, filteredMovies.length);
-    const paginatedMovies = filteredMovies.slice(start, end);
+    const end = start + CONFIG.ITEMS_PER_PAGE;
+    const paginated = filtered.slice(start, end);
     
-    let html = '<div class="movies-grid">';
-    paginatedMovies.forEach(movie => {
-      html += this.createMovieCard(movie);
-    });
-    html += '</div>';
+    let html = paginated.map(m => this.createMovieCard(m)).join('');
     
-    // Pagination info
-    html += `
-      <div class="pagination-info" role="status" aria-label="Informasi halaman">
-        <p>Menampilkan <strong>${start + 1}</strong> - <strong>${end}</strong> dari <strong>${filteredMovies.length}</strong> film</p>
-      </div>
-    `;
-    
-    // Pagination controls
+    // Add pagination if needed
+    const totalPages = Math.ceil(filtered.length / CONFIG.ITEMS_PER_PAGE);
     if (totalPages > 1) {
       html += `
-        <div class="pagination-controls" role="navigation" aria-label="Navigasi halaman">
-          <button 
-            class="pagination-btn" 
-            onclick="Navigation.prevPage()" 
-            ${State.currentPage === 1 ? 'disabled' : ''}
-            aria-label="Halaman sebelumnya"
-          >
-            <i class="fas fa-chevron-left" aria-hidden="true"></i>
-            <span>Sebelumnya</span>
+        <div class="pagination-controls">
+          <button class="pagination-btn" onclick="prevPage()" ${State.currentPage === 1 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-left"></i> Prev
           </button>
-          <span class="page-info">Halaman ${State.currentPage} dari ${totalPages}</span>
-          <button 
-            class="pagination-btn" 
-            onclick="Navigation.nextPage()" 
-            ${State.currentPage === totalPages ? 'disabled' : ''}
-            aria-label="Halaman berikutnya"
-          >
-            <span>Selanjutnya</span>
-            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+          <span class="page-info">${State.currentPage} / ${totalPages}</span>
+          <button class="pagination-btn" onclick="nextPage()" ${State.currentPage === totalPages ? 'disabled' : ''}>
+            Next <i class="fas fa-chevron-right"></i>
           </button>
-        </div>
-      `;
+        </div>`;
     }
     
-    DOM.updateMoviesList(html);
-  }
-};
-
-// =====================================================
-// NAVIGATION
-// =====================================================
-const Navigation = {
-  nextPage() {
-    const filteredMovies = State.getFilteredMovies();
-    const totalPages = Math.ceil(filteredMovies.length / CONFIG.ITEMS_PER_PAGE);
+    DOM.moviesList.innerHTML = html;
     
-    if (State.currentPage < totalPages) {
-      State.currentPage++;
-      UI.renderMovies();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  },
-  
-  prevPage() {
+    // Scroll to top smoothly when changing pages
     if (State.currentPage > 1) {
-      State.currentPage--;
-      UI.renderMovies();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   },
-  
-  loadTab(tab) {
-    console.log('[Navigation] Switching to tab:', tab);
-    State.currentTab = tab;
-    State.resetPagination();
-    State.invalidateCache();
-    
-    // Update active tab
-    document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-    const tabMap = { rekomendasi: 'tabRekomendasi', populer: 'tabPopuler', terbaru: 'tabTerbaru' };
-    document.getElementById(tabMap[tab])?.classList.add('active');
-    
-    UI.renderMovies();
-  },
-  
-  filterCategory(cat) {
-    console.log('[Navigation] Filtering category:', cat);
-    State.currentCategory = cat;
-    State.resetPagination();
-    State.invalidateCache();
-    
-    // Update active category
-    document.querySelectorAll('.kategori button').forEach(btn => btn.classList.remove('active'));
-    const catMap = { all: 'catAll', film: 'catFilm', donghua: 'catDonghua' };
-    document.getElementById(catMap[cat])?.classList.add('active');
-    
-    UI.renderMovies();
-  },
-  
-  scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-};
 
-// =====================================================
-// SEARCH HANDLER
-// =====================================================
-const SearchHandler = {
-  debounceTimer: null,
-  
-  handleInput(value) {
-    clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => {
-      State.searchTerm = value;
-      State.resetPagination();
-      State.invalidateCache();
-      UI.renderMovies();
-      console.log('[Search] Term:', value);
-    }, CONFIG.DEBOUNCE_DELAY);
-  }
-};
-
-// =====================================================
-// EVENT LISTENERS
-// =====================================================
-function setupEventListeners() {
-  // Search input
-  if (DOM.searchInput) {
-    DOM.searchInput.addEventListener('input', (e) => {
-      SearchHandler.handleInput(e.target.value);
+  // Update active tab styles
+  setActiveTab(tab) {
+    Object.keys(DOM.tabButtons).forEach(key => {
+      DOM.tabButtons[key]?.classList.remove('active');
     });
-  }
-  
-  // Scroll to top button visibility
-  window.addEventListener('scroll', () => {
-    if (DOM.scrollTopBtn) {
-      DOM.scrollTopBtn.classList.toggle('show', window.scrollY > CONFIG.SCROLL_THRESHOLD);
+    if (DOM.tabButtons[tab]) {
+      DOM.tabButtons[tab].classList.add('active');
     }
-  });
-  
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    // ESC to clear search
-    if (e.key === 'Escape' && DOM.searchInput === document.activeElement) {
-      DOM.searchInput.value = '';
-      SearchHandler.handleInput('');
-      DOM.searchInput.blur();
+  },
+
+  // Update active category styles
+  setActiveCategory(cat) {
+    Object.keys(DOM.categoryButtons).forEach(key => {
+      DOM.categoryButtons[key]?.classList.remove('active');
+    });
+    if (DOM.categoryButtons[cat]) {
+      DOM.categoryButtons[cat].classList.add('active');
     }
-  });
-}
+  },
 
-// =====================================================
-// EXPOSE GLOBALS
-// =====================================================
-window.loadTab = Navigation.loadTab.bind(Navigation);
-window.filterCategory = Navigation.filterCategory.bind(Navigation);
-window.scrollToTop = Navigation.scrollToTop.bind(Navigation);
-window.nextPage = Navigation.nextPage.bind(Navigation);
-window.prevPage = Navigation.prevPage.bind(Navigation);
+  // Show loading state
+  showLoading() {
+    DOM.moviesList.innerHTML = `
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Memuat data...</p>
+      </div>`;
+  },
 
-// =====================================================
-// INITIALIZE
-// =====================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[FilmKu] Application starting...');
-  
-  // Verify DOM elements
-  if (!DOM.moviesList) console.error('[FilmKu] Critical: #moviesList not found');
-  if (!DOM.searchInput) console.warn('[FilmKu] #searchInput not found');
-  
-  setupEventListeners();
-  await DataService.loadAllData();
-  
-  console.log('[FilmKu] Application ready');
-});
+  // Hide loading (just a placeholder)
+  hideLoading() {}
+};
 
-// =====================================================
-// DEBUG TOOLS
-// =====================================================
-window.debug = {
-  getState: () => State,
-  reload: () => DataService.loadAllData(),
-  testConnection: async () => {
-    const { data, error } = await supabaseClient.from('movies').select('count');
-    console.log('Connection test:', { data, error });
+// Global functions for navigation
+window.loadTab = (tab) => {
+  State.currentTab = tab;
+  State.resetPagination();
+  State.invalidateCache();
+  UI.setActiveTab(tab);
+  UI.renderMovies();
+};
+
+window.filterCategory = (cat) => {
+  State.currentCategory = cat;
+  State.resetPagination();
+  State.invalidateCache();
+  UI.setActiveCategory(cat);
+  UI.renderMovies();
+};
+
+window.prevPage = () => {
+  if (State.currentPage > 1) {
+    State.currentPage--;
+    UI.renderMovies();
   }
 };
+
+window.nextPage = () => {
+  const filtered = State.getFilteredMovies();
+  const totalPages = Math.ceil(filtered.length / CONFIG.ITEMS_PER_PAGE);
+  if (State.currentPage < totalPages) {
+    State.currentPage++;
+    UI.renderMovies();
+  }
+};
+
+window.scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  UI.showLoading();
+  
+  try {
+    // PERBAIKAN: Gunakan tabel movie_details, BUKAN movies
+    console.log('Mengambil data dari tabel: movie_details');
+    
+    const { data, error } = await supabaseClient
+      .from('movie_details')  // <-- INI YANG DIUBAH
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    console.log(`Berhasil memuat ${data?.length || 0} film dari movie_details`);
+    console.log('Contoh data:', data?.[0]);
+    
+    State.movies = data || [];
+    UI.renderMovies();
+    
+    // Setup search with debounce
+    let searchTimeout;
+    DOM.searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        State.searchTerm = e.target.value;
+        State.resetPagination();
+        State.invalidateCache();
+        UI.renderMovies();
+      }, CONFIG.DEBOUNCE_DELAY);
+    });
+    
+    // Scroll to top button visibility
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 400) {
+        DOM.scrollTopBtn.classList.add('show');
+      } else {
+        DOM.scrollTopBtn.classList.remove('show');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error loading movies:', error);
+    DOM.moviesList.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Gagal memuat data: ${error.message}</p>
+        <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #e50914; border: none; border-radius: 4px; color: white; cursor: pointer;">Refresh</button>
+      </div>`;
+  }
+});

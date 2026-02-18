@@ -3,109 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Nonton film dan donghua terbaru dengan subtitle Indonesia. Koleksi lengkap film dan donghua populer." />
-  <meta name="keywords" content="film, donghua, streaming, nonton film, film online, donghua sub indo" />
-  <meta name="author" content="FilmKu" />
-  
-  <!-- Open Graph / Social Media -->
-  <meta property="og:title" content="FilmKu - Nonton Film & Donghua" />
-  <meta property="og:description" content="Nonton film dan donghua terbaru dengan subtitle Indonesia" />
-  <meta property="og:image" content="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" />
-  <meta property="og:url" content="https://filmku.com" />
-  
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" />
-  
+  <meta name="description" content="Nonton film dan donghua terbaru dengan subtitle Indonesia." />
   <title>FilmKu - Nonton Film & Donghua Terbaru</title>
+
+  <!-- VERIFIKASI HILLTOPADS -->
+  <meta name="ab7a79ebbce994bfcb0ad58958f91d2f7904f996" content="ab7a79ebbce994bfcb0ad58958f91d2f7904f996" />
   
-  <!-- Preconnect untuk performa -->
-  <link rel="preconnect" href="https://jsbqmtzkayvnpzmnycyv.supabase.co" />
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-  
-  <!-- Stylesheets -->
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 <body>
 
-<!-- Header dengan logo dan search -->
 <header class="site-header">
   <div class="logo-container">
-    <img 
-      src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" 
-      alt="FilmKu Logo" 
-      class="logo-img" 
-      id="logoImage"
-      loading="eager"
-      width="40" 
-      height="40"
-    >
+    <img src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" alt="Logo" class="logo-img" width="40" height="40">
     <h1 class="logo">FilmKu</h1>
   </div>
   
   <div class="search-wrapper">
-    <i class="fas fa-search search-icon" aria-hidden="true"></i>
-    <input 
-      type="text" 
-      id="searchInput" 
-      placeholder="Cari film atau donghua..." 
-      aria-label="Pencarian film"
-    />
+    <i class="fas fa-search search-icon"></i>
+    <input type="text" id="searchInput" placeholder="Cari film atau donghua..." />
   </div>
 </header>
 
-<!-- Navigation Tabs -->
-<nav class="tabs" aria-label="Tab konten">
-  <button onclick="loadTab('rekomendasi')" class="active" id="tabRekomendasi" aria-current="page">
-    <i class="fas fa-random" aria-hidden="true"></i>
-    <span>Rekomendasi</span>
+<nav class="tabs">
+  <button onclick="loadTab('rekomendasi')" class="active" id="tabRekomendasi">
+    <i class="fas fa-random"></i><span>Rekomendasi</span>
   </button>
   <button onclick="loadTab('populer')" id="tabPopuler">
-    <i class="fas fa-fire" aria-hidden="true"></i>
-    <span>Populer</span>
+    <i class="fas fa-fire"></i><span>Populer</span>
   </button>
   <button onclick="loadTab('terbaru')" id="tabTerbaru">
-    <i class="fas fa-clock" aria-hidden="true"></i>
-    <span>Terbaru</span>
+    <i class="fas fa-clock"></i><span>Terbaru</span>
   </button>
 </nav>
 
-<!-- Category Filter -->
-<section class="kategori" aria-label="Filter kategori">
-  <button onclick="filterCategory('all')" class="active" id="catAll">
-    <i class="fas fa-globe" aria-hidden="true"></i>
-    <span>Semua</span>
-  </button>
-  <button onclick="filterCategory('film')" id="catFilm">
-    <i class="fas fa-film" aria-hidden="true"></i>
-    <span>Film</span>
-  </button>
-  <button onclick="filterCategory('donghua')" id="catDonghua">
-    <i class="fas fa-tv" aria-hidden="true"></i>
-    <span>Donghua</span>
-  </button>
+<section class="kategori">
+  <button onclick="filterCategory('all')" class="active" id="catAll">Semua</button>
+  <button onclick="filterCategory('film')" id="catFilm">Film</button>
+  <button onclick="filterCategory('donghua')" id="catDonghua">Donghua</button>
 </section>
 
-<!-- Main Content - Movie List -->
-<main id="moviesList" class="movies-grid" aria-label="Daftar film">
+<main id="moviesList" class="movies-grid">
   <div class="loading-state">
-    <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+    <i class="fas fa-spinner fa-spin"></i>
     <p>Memuat data...</p>
   </div>
 </main>
 
-<!-- Scroll to Top Button -->
-<button 
-  id="scrollTopBtn" 
-  class="scroll-top" 
-  onclick="scrollToTop()"
-  aria-label="Kembali ke atas"
-  title="Kembali ke atas"
->
-  <i class="fas fa-arrow-up" aria-hidden="true"></i>
+<button id="scrollTopBtn" class="scroll-top" onclick="scrollToTop()">
+  <i class="fas fa-arrow-up"></i>
 </button>
 
-<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
 </body>
