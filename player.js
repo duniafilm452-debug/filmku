@@ -1,4 +1,4 @@
-// player.js - VERSI FINAL dengan IMA SDK Integration FIX untuk iklan visual
+// player.js - VERSI HYBRID untuk Embed & MP4 dengan IMA SDK
 
 const CONFIG = {
     SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
@@ -20,6 +20,174 @@ let imaAdsManager;
 let imaVideoContent;
 let imaInitialized = false;
 let pendingVideoUrl = null;
+
+// ==================== DETEKSI JENIS URL ====================
+
+// Deteksi apakah URL adalah embed (YouTube, Dailymotion, dll)
+function isEmbedUrl(url) {
+    if (!url) return false;
+    return url.includes('youtube.com') || 
+           url.includes('youtu.be') || 
+           url.includes('dailymotion.com') || 
+           url.includes('vimeo.com') ||
+           url.includes('embed') ||
+           url.includes('facebook.com') ||
+           url.includes('instagram.com') ||
+           url.includes('twitch.tv');
+}
+
+// Deteksi apakah URL adalah HLS (m3u8)
+function isHlsUrl(url) {
+    if (!url) return false;
+    return url.includes('.m3u8');
+}
+
+// Deteksi apakah URL adalah file video langsung (MP4, WebM, dll)
+function isDirectVideoUrl(url) {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi', '.m4v'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+}
+
+// ==================== PLAYER FUNCTIONS ====================
+
+// Reset player ke kondisi awal
+function resetPlayer() {
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoWrapper = document.getElementById('videoWrapper');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    
+    // Hapus iframe yang mungkin ada
+    const oldIframe = videoWrapper.querySelector('iframe');
+    if (oldIframe) oldIframe.remove();
+    
+    // Tampilkan dan reset video tag
+    videoPlayer.style.display = 'block';
+    videoPlayer.pause();
+    videoPlayer.removeAttribute('src');
+    videoPlayer.load();
+    
+    // Sembunyikan loading
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+    
+    // Reset IMA jika ada
+    if (imaAdsManager) {
+        try {
+            imaAdsManager.destroy();
+        } catch (e) {}
+        imaAdsManager = null;
+    }
+}
+
+// Play video embed (YouTube, Dailymotion, dll) - TANPA IKLAN
+function playEmbedVideo(url) {
+    console.log('Playing embed video:', url);
+    resetPlayer();
+    
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoWrapper = document.getElementById('videoWrapper');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    
+    // Sembunyikan video tag
+    videoPlayer.style.display = 'none';
+    
+    // Konversi YouTube URL ke embed format jika perlu
+    let embedUrl = url;
+    
+    // YouTube URL conversion
+    if (url.includes('youtube.com/watch?v=')) {
+        const videoId = url.split('v=')[1].split('&')[0];
+        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+    } else if (url.includes('youtu.be/')) {
+        const videoId = url.split('youtu.be/')[1].split('?')[0];
+        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+    }
+    
+    // Dailymotion URL conversion
+    else if (url.includes('dailymotion.com/video/')) {
+        const videoId = url.split('video/')[1].split('?')[0];
+        embedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=1`;
+    }
+    
+    // Vimeo URL conversion
+    else if (url.includes('vimeo.com/')) {
+        const videoId = url.split('vimeo.com/')[1].split('?')[0];
+        embedUrl = `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+    }
+    
+    // Buat iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = embedUrl;
+    iframe.allowFullscreen = true;
+    iframe.frameBorder = 0;
+    iframe.allow = "autoplay; fullscreen; picture-in-picture";
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.position = 'absolute';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    
+    // Tambahkan ke wrapper
+    videoWrapper.appendChild(iframe);
+    
+    // Sembunyikan loading
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+}
+
+// Play HLS video dengan IMA SDK
+function playHlsVideo(url) {
+    console.log('Playing HLS video with ads:', url);
+    
+    // Cek apakah HLS.js tersedia
+    if (typeof Hls === 'undefined') {
+        // Load HLS.js jika belum ada
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+        script.onload = () => {
+            playHlsVideoWithAds(url);
+        };
+        document.head.appendChild(script);
+    } else {
+        playHlsVideoWithAds(url);
+    }
+}
+
+function playHlsVideoWithAds(url) {
+    const videoPlayer = document.getElementById('videoPlayer');
+    
+    // Set src untuk IMA
+    videoPlayer.src = url;
+    
+    // Play dengan IMA
+    playVideoWithAds(url);
+}
+
+// Main function untuk memutar video berdasarkan jenis URL
+function playVideo(url) {
+    if (!url) return;
+    
+    console.log('Playing video:', url);
+    resetPlayer();
+    
+    if (isEmbedUrl(url)) {
+        // Embed video - putar langsung tanpa iklan
+        playEmbedVideo(url);
+    } else if (isHlsUrl(url)) {
+        // HLS video - putar dengan IMA
+        playHlsVideo(url);
+    } else if (isDirectVideoUrl(url)) {
+        // Direct video file - putar dengan IMA
+        playVideoWithAds(url);
+    } else {
+        // Unknown type - coba sebagai direct video
+        console.warn('Unknown video type, trying as direct video:', url);
+        playVideoWithAds(url);
+    }
+}
 
 // ==================== IMA SDK FUNCTIONS ====================
 
@@ -77,9 +245,9 @@ function requestAds(videoUrl) {
         const adsRequest = new google.ima.AdsRequest();
         
         // VAST tag URL - GANTI DENGAN VAST TAG ANDA
-        adsRequest.adTagUrl = 'https://plumprush.com/damTFQz.dAGXNbvnZ/GPUo/zeImG9tueZOU/l_kIPNT/YZ4/MbTEMoxSNPj/kotuN/jag/xXMnzAE/3CMqyqZYsKatWI1/pNd/DA0Fxv';
+        adsRequest.adTagUrl = 'https://plumprush.com/dVmtF.z/d/GaNtv/ZEGdUX/peUma9turZPUJlpkuPGTWYZ4MMhTqMfxGNvj/kftlN_j/g/xKMDzhEB3hMvynZgshaAWz1hp/dVD/0Yxt';
         
-        // PERBAIKAN: Set ukuran berdasarkan ukuran player sebenarnya
+        // Set ukuran berdasarkan ukuran player
         const playerWidth = imaVideoContent.offsetWidth || 640;
         const playerHeight = imaVideoContent.offsetHeight || 360;
         
@@ -88,10 +256,7 @@ function requestAds(videoUrl) {
         adsRequest.nonLinearAdSlotWidth = playerWidth;
         adsRequest.nonLinearAdSlotHeight = Math.floor(playerHeight / 3);
         
-        // PERBAIKAN: Set force non-linear ads
         adsRequest.forceNonLinearFullSlot = true;
-        
-        // PERBAIKAN: Set ad type
         adsRequest.adType = google.ima.AdType.VIDEO;
         
         // Store video URL for later use
@@ -116,7 +281,6 @@ function onAdsManagerLoaded(event) {
         adsRenderingSettings.enablePreloading = true;
         adsRenderingSettings.useStyledLinearAds = true;
         adsRenderingSettings.useStyledNonLinearAds = true;
-        adsRenderingSettings.autoAlign = true;
         
         imaAdsManager = event.getAdsManager(
             imaVideoContent,
@@ -144,58 +308,41 @@ function onAdsManagerLoaded(event) {
             onAllAdsCompleted
         );
         
-        // PERBAIKAN: Tambahkan listener untuk ad started
         imaAdsManager.addEventListener(
             google.ima.AdEvent.Type.STARTED,
             onAdStarted
         );
         
-        // PERBAIKAN: Tambahkan listener untuk ad loaded
         imaAdsManager.addEventListener(
             google.ima.AdEvent.Type.LOADED,
             onAdLoaded
-        );
-        
-        // PERBAIKAN: Tambahkan listener untuk ad progress
-        imaAdsManager.addEventListener(
-            google.ima.AdEvent.Type.AD_PROGRESS,
-            onAdProgress
         );
         
         // Initialize ad container
         imaAdDisplayContainer.initialize();
         
         try {
-            // PERBAIKAN: Set ukuran berdasarkan kontainer
             const videoWidth = imaVideoContent.offsetWidth || 640;
             const videoHeight = imaVideoContent.offsetHeight || 360;
             
             console.log('Initializing ads manager with size:', videoWidth, 'x', videoHeight);
             
-            // Initialize ads manager
             imaAdsManager.init(
                 videoWidth,
                 videoHeight,
                 google.ima.ViewMode.NORMAL
             );
             
-            // PERBAIKAN: Set volume
             imaAdsManager.setVolume(1.0);
             
-            // Start ads if we have a pending video
             if (pendingVideoUrl) {
-                // Set video source but don't play yet
                 imaVideoContent.src = pendingVideoUrl;
                 imaVideoContent.load();
-                
                 console.log('Starting ads...');
-                
-                // Start ads
                 imaAdsManager.start();
             }
         } catch (adError) {
             console.error('Error starting ads:', adError);
-            // If ads fail, play video normally
             if (pendingVideoUrl) {
                 playVideoDirectly(pendingVideoUrl);
             }
@@ -217,7 +364,6 @@ function onAdError(event) {
         }, 2000);
     }
     
-    // Resume content
     if (pendingVideoUrl) {
         playVideoDirectly(pendingVideoUrl);
     }
@@ -228,7 +374,6 @@ function onContentPauseRequested() {
     console.log('Content pause requested - ad starting');
     imaVideoContent.pause();
     
-    // Show loading overlay with ad indicator
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.innerHTML = '<i class="fas fa-ad"></i> Memutar iklan...';
@@ -240,13 +385,11 @@ function onContentPauseRequested() {
 function onContentResumeRequested() {
     console.log('Content resume requested - ad finished');
     
-    // Hide loading overlay
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.style.display = 'none';
     }
     
-    // Play the video
     imaVideoContent.play();
 }
 
@@ -255,7 +398,7 @@ function onAllAdsCompleted() {
     console.log('All ads completed');
 }
 
-// PERBAIKAN: Handle ad started
+// Handle ad started
 function onAdStarted(event) {
     console.log('Ad started:', event);
     
@@ -265,7 +408,6 @@ function onAdStarted(event) {
         loadingOverlay.style.display = 'flex';
     }
     
-    // PERBAIKAN: Pastikan ad container terlihat
     setTimeout(() => {
         const adContainer = document.querySelector('.ima-ad-container');
         if (adContainer) {
@@ -277,36 +419,9 @@ function onAdStarted(event) {
     }, 100);
 }
 
-// PERBAIKAN: Handle ad loaded
+// Handle ad loaded
 function onAdLoaded(event) {
     console.log('Ad loaded:', event);
-    const ad = event.getAd();
-    if (ad) {
-        console.log('Ad info:', {
-            title: ad.getTitle(),
-            description: ad.getDescription(),
-            duration: ad.getDuration(),
-            width: ad.getWidth(),
-            height: ad.getHeight(),
-            isLinear: ad.isLinear()
-        });
-    }
-}
-
-// PERBAIKAN: Handle ad progress
-function onAdProgress(event) {
-    const adData = event.getAdData();
-    if (adData) {
-        const currentTime = adData.currentTime;
-        const duration = adData.duration;
-        if (duration > 0) {
-            const progress = Math.round((currentTime / duration) * 100);
-            const loadingOverlay = document.querySelector('.loading-overlay');
-            if (loadingOverlay) {
-                loadingOverlay.innerHTML = `<i class="fas fa-ad"></i> Iklan: ${progress}%`;
-            }
-        }
-    }
 }
 
 // Play video directly without ads (fallback)
@@ -322,7 +437,6 @@ function playVideoDirectly(url) {
     videoPlayer.load();
     videoPlayer.play().catch(e => {
         console.warn('Autoplay failed:', e);
-        // Maybe show play button
     });
     
     if (loadingOverlay) {
@@ -332,7 +446,7 @@ function playVideoDirectly(url) {
     pendingVideoUrl = null;
 }
 
-// Main function to play video with ads
+// Main function to play video with ads (untuk direct video)
 function playVideoWithAds(url) {
     if (!url) return;
     
@@ -344,9 +458,10 @@ function playVideoWithAds(url) {
         loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyiapkan video...';
     }
     
-    // PERBAIKAN: Reset video player
+    // Reset player
     const videoPlayer = document.getElementById('videoPlayer');
     if (videoPlayer) {
+        videoPlayer.style.display = 'block';
         videoPlayer.pause();
         videoPlayer.removeAttribute('src');
         videoPlayer.load();
@@ -373,7 +488,6 @@ async function loadMovieData() {
     try {
         showLoading(true);
         
-        // Get movie details from movie_details table
         const { data: movie, error: movieError } = await supabaseClient
             .from('movie_details')
             .select('*')
@@ -385,19 +499,10 @@ async function loadMovieData() {
         
         currentMovie = movie;
         
-        // Load episodes
         await loadEpisodes(movieId, movie);
-        
-        // Display movie info
         displayMovie(movie, episodes);
-        
-        // Increment view count
         incrementViews(movie.id, movie.views || 0);
-        
-        // Load recommendations
         loadRecommendations(movie.category);
-        
-        // Check if there's a selected episode from localStorage
         checkSelectedEpisode();
         
     } catch (err) {
@@ -416,7 +521,7 @@ function checkSelectedEpisode() {
             const data = JSON.parse(saved);
             if (data.movieId === movieId && data.videoUrl) {
                 setTimeout(() => {
-                    playVideoWithAds(data.videoUrl);
+                    playVideo(data.videoUrl);
                     
                     setTimeout(() => {
                         document.querySelectorAll('.episode-card').forEach(card => {
@@ -441,10 +546,9 @@ function checkSelectedEpisode() {
     }
 }
 
-// Load episodes from episodes table or episode_urls
+// Load episodes
 async function loadEpisodes(movieId, movie) {
     try {
-        // Try to get from episodes table first
         const { data: episodesData, error: episodesError } = await supabaseClient
             .from('episodes')
             .select('*')
@@ -456,13 +560,9 @@ async function loadEpisodes(movieId, movie) {
                 id: ep.id,
                 title: ep.title || `Episode ${ep.episode_number}`,
                 url: ep.video_url,
-                number: ep.episode_number,
-                duration: ep.duration,
-                thumbnail: ep.thumbnail,
-                views: ep.views
+                number: ep.episode_number
             }));
         } 
-        // Fallback to episode_urls from movie_details
         else if (movie.episode_urls && Array.isArray(movie.episode_urls) && movie.episode_urls.length > 0) {
             episodes = movie.episode_urls.map((url, index) => ({
                 id: `ep-${index + 1}`,
@@ -471,7 +571,6 @@ async function loadEpisodes(movieId, movie) {
                 number: index + 1
             }));
         }
-        // If it's a movie with single video
         else if (movie.video_url) {
             episodes = [{
                 id: 'main',
@@ -484,8 +583,6 @@ async function loadEpisodes(movieId, movie) {
         }
     } catch (error) {
         console.warn('Error loading episodes:', error);
-        
-        // Final fallback
         if (movie.episode_urls && Array.isArray(movie.episode_urls)) {
             episodes = movie.episode_urls.map((url, index) => ({
                 id: `ep-${index + 1}`,
@@ -503,18 +600,6 @@ async function loadEpisodes(movieId, movie) {
         } else {
             episodes = [];
         }
-    }
-}
-
-// Increment view count
-async function incrementViews(movieId, currentViews) {
-    try {
-        await supabaseClient
-            .from('movie_details')
-            .update({ views: (currentViews || 0) + 1 })
-            .eq('id', movieId);
-    } catch (error) {
-        console.warn('Failed to increment views:', error);
     }
 }
 
@@ -537,12 +622,6 @@ function displayMovie(movie, episodes) {
     if (dateEl) {
         if (movie.year) {
             dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${movie.year}`;
-        } else if (movie.release_date) {
-            const year = new Date(movie.release_date).getFullYear();
-            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
-        } else if (movie.created_at) {
-            const year = new Date(movie.created_at).getFullYear();
-            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
         } else {
             dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> -`;
         }
@@ -586,7 +665,7 @@ function displayEpisodes(episodes, movie) {
                 document.querySelectorAll('.episode-card').forEach(c => c.classList.remove('active'));
                 episodeCard.classList.add('active');
                 if (ep.url) {
-                    playVideoWithAds(ep.url);
+                    playVideo(ep.url); // Menggunakan playVideo yang sudah ditingkatkan
                 }
             };
             
@@ -595,9 +674,9 @@ function displayEpisodes(episodes, movie) {
         
         episodesList.appendChild(scrollContainer);
         
-        // Auto play first episode with ads
+        // Auto play first episode
         if (episodes[0]?.url) {
-            playVideoWithAds(episodes[0].url);
+            playVideo(episodes[0].url);
             setTimeout(() => {
                 const firstCard = document.querySelector('.episode-card');
                 if (firstCard) firstCard.classList.add('active');
@@ -606,7 +685,7 @@ function displayEpisodes(episodes, movie) {
     } else {
         if (episodesSection) episodesSection.style.display = 'none';
         if (movie.video_url) {
-            playVideoWithAds(movie.video_url);
+            playVideo(movie.video_url);
         } else {
             episodesList.innerHTML = `
                 <div class="error-episodes">
@@ -665,7 +744,7 @@ function createRecommendationCard(movie) {
     `;
 }
 
-// Format number with K/M suffix
+// Format number
 function formatNumber(num) {
     if (!num) return '0';
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'Jt';
@@ -673,7 +752,7 @@ function formatNumber(num) {
     return num.toString();
 }
 
-// Show/hide loading overlay
+// Show/hide loading
 function showLoading(show) {
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
@@ -684,7 +763,7 @@ function showLoading(show) {
     }
 }
 
-// Show error message
+// Show error
 function showError(message) {
     const episodesList = document.getElementById('episodesList');
     if (episodesList) {
@@ -696,48 +775,6 @@ function showError(message) {
     }
     setTextContent('movieTitle', 'Error');
 }
-
-// Setup video player event listeners
-function setupVideoPlayer() {
-    const videoPlayer = document.getElementById('videoPlayer');
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    
-    if (!videoPlayer || !loadingOverlay) return;
-    
-    videoPlayer.addEventListener('loadstart', () => {
-        if (!imaAdsManager) { // Only show if not playing ads
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
-        }
-    });
-    
-    videoPlayer.addEventListener('canplay', () => {
-        if (!imaAdsManager) {
-            loadingOverlay.classList.add('hidden');
-        }
-    });
-    
-    videoPlayer.addEventListener('error', (e) => {
-        console.error('Video error:', e);
-        loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat video';
-        loadingOverlay.classList.remove('hidden');
-    });
-}
-
-// Handle resize events for ads
-window.addEventListener('resize', () => {
-    if (imaAdsManager && imaVideoContent) {
-        try {
-            imaAdsManager.resize(
-                imaVideoContent.offsetWidth || 640,
-                imaVideoContent.offsetHeight || 360,
-                google.ima.ViewMode.NORMAL
-            );
-        } catch (e) {
-            console.error('Error resizing ads:', e);
-        }
-    }
-});
 
 // ==================== SHARE FUNCTIONS ====================
 
@@ -803,7 +840,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     loadMovieData();
-    setupVideoPlayer();
     
     // Initialize IMA SDK after a short delay
     setTimeout(() => {
@@ -811,12 +847,9 @@ document.addEventListener('DOMContentLoaded', () => {
             initImaSDK();
         } else {
             console.warn('IMA SDK not loaded yet, retrying...');
-            // Retry after 1 second
             setTimeout(() => {
                 if (typeof google !== 'undefined' && google.ima) {
                     initImaSDK();
-                } else {
-                    console.error('IMA SDK failed to load');
                 }
             }, 1000);
         }
