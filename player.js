@@ -77,7 +77,7 @@ function requestAds(videoUrl) {
         const adsRequest = new google.ima.AdsRequest();
         
         // VAST tag URL - GANTI DENGAN VAST TAG ANDA
-        adsRequest.adTagUrl = 'https://plumprush.com/d.m/FAzudUGhNlvKZnG/Uh/Ee/mJ9SubZiUNlBkFPfTDYN4lM/TcMxxqNZjWkNteNVjygCxvMhzvE-3/MoyMZ/sXa/Wf1ApJdjDR0IxC';
+        adsRequest.adTagUrl = 'https://plumprush.com/damTFQz.dAGXNbvnZ/GPUo/zeImG9tueZOU/l_kIPNT/YZ4/MbTEMoxSNPj/kotuN/jag/xXMnzAE/3CMqyqZYsKatWI1/pNd/DA0Fxv';
         
         // Specify the ad sizes
         adsRequest.linearAdSlotWidth = 640;
