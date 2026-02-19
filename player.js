@@ -1,61 +1,276 @@
-// player.js - Versi Final dengan Tampilan Episode untuk Semua Konten
-// =====================================================
-// KONFIGURASI
-// =====================================================
+// player.js - VERSI FINAL dengan IMA SDK Integration
+
 const CONFIG = {
     SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o'
 };
 
-// =====================================================
-// INISIALISASI SUPABASE
-// =====================================================
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-// =====================================================
-// STATE & VARIABEL GLOBAL
-// =====================================================
 const urlParams = new URLSearchParams(window.location.search);
 const movieId = urlParams.get('id');
 
 let currentMovie = null;
 let episodes = [];
 
-// =====================================================
-// FUNGSI UTAMA LOAD DATA
-// =====================================================
+// IMA SDK Variables
+let imaAdDisplayContainer;
+let imaAdsLoader;
+let imaAdsManager;
+let imaVideoContent;
+let imaInitialized = false;
+let pendingVideoUrl = null;
+
+// ==================== IMA SDK FUNCTIONS ====================
+
+// Initialize IMA SDK
+function initImaSDK() {
+    try {
+        imaVideoContent = document.getElementById('videoPlayer');
+        
+        if (!imaVideoContent) {
+            console.warn('Video player not found for IMA');
+            return;
+        }
+
+        // Create ad display container
+        imaAdDisplayContainer = new google.ima.AdDisplayContainer(
+            document.getElementById('videoWrapper'),
+            imaVideoContent
+        );
+        
+        // Initialize ads loader
+        imaAdsLoader = new google.ima.AdsLoader(imaAdDisplayContainer);
+        
+        // Add event listeners
+        imaAdsLoader.addEventListener(
+            google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
+            onAdsManagerLoaded
+        );
+        
+        imaAdsLoader.addEventListener(
+            google.ima.AdErrorEvent.Type.AD_ERROR,
+            onAdError
+        );
+        
+        imaInitialized = true;
+        console.log('IMA SDK initialized successfully');
+        
+        // Request ads if there's a pending video
+        if (pendingVideoUrl) {
+            requestAds(pendingVideoUrl);
+            pendingVideoUrl = null;
+        }
+    } catch (e) {
+        console.error('Error initializing IMA:', e);
+    }
+}
+
+// Request ads from server
+function requestAds(videoUrl) {
+    try {
+        if (!imaInitialized || !imaAdsLoader) {
+            pendingVideoUrl = videoUrl;
+            return;
+        }
+
+        const adsRequest = new google.ima.AdsRequest();
+        
+        // VAST tag URL - GANTI DENGAN VAST TAG ANDA
+        adsRequest.adTagUrl = 'https://plumprush.com/d.m/FAzudUGhNlvKZnG/Uh/Ee/mJ9SubZiUNlBkFPfTDYN4lM/TcMxxqNZjWkNteNVjygCxvMhzvE-3/MoyMZ/sXa/Wf1ApJdjDR0IxC';
+        
+        // Specify the ad sizes
+        adsRequest.linearAdSlotWidth = 640;
+        adsRequest.linearAdSlotHeight = 360;
+        adsRequest.nonLinearAdSlotWidth = 640;
+        adsRequest.nonLinearAdSlotHeight = 150;
+        
+        // Store video URL for later use
+        pendingVideoUrl = videoUrl;
+        
+        // Request ads
+        imaAdsLoader.requestAds(adsRequest);
+    } catch (e) {
+        console.error('Error requesting ads:', e);
+        // Fallback: play video without ads
+        playVideoDirectly(videoUrl);
+    }
+}
+
+// Handle ads manager loaded
+function onAdsManagerLoaded(event) {
+    try {
+        const adsRenderingSettings = new google.ima.AdsRenderingSettings();
+        adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
+        
+        imaAdsManager = event.getAdsManager(
+            imaVideoContent,
+            adsRenderingSettings
+        );
+        
+        // Add event listeners
+        imaAdsManager.addEventListener(
+            google.ima.AdErrorEvent.Type.AD_ERROR,
+            onAdError
+        );
+        
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,
+            onContentPauseRequested
+        );
+        
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,
+            onContentResumeRequested
+        );
+        
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.ALL_ADS_COMPLETED,
+            onAllAdsCompleted
+        );
+        
+        // Initialize ad container
+        imaAdDisplayContainer.initialize();
+        
+        try {
+            // Initialize ads manager
+            imaAdsManager.init(
+                imaVideoContent.offsetWidth,
+                imaVideoContent.offsetHeight,
+                google.ima.ViewMode.NORMAL
+            );
+            
+            // Start ads if we have a pending video
+            if (pendingVideoUrl) {
+                // Set video source but don't play yet
+                imaVideoContent.src = pendingVideoUrl;
+                imaVideoContent.load();
+                
+                // Start ads
+                imaAdsManager.start();
+            }
+        } catch (adError) {
+            console.error('Error starting ads:', adError);
+            // If ads fail, play video normally
+            if (pendingVideoUrl) {
+                playVideoDirectly(pendingVideoUrl);
+            }
+        }
+    } catch (e) {
+        console.error('Error in onAdsManagerLoaded:', e);
+    }
+}
+
+// Handle ad error
+function onAdError(event) {
+    console.warn('Ad error:', event.getError());
+    // Resume content
+    if (pendingVideoUrl) {
+        playVideoDirectly(pendingVideoUrl);
+    }
+}
+
+// Handle content pause (ad starting)
+function onContentPauseRequested() {
+    imaVideoContent.pause();
+    // Show loading overlay with ad indicator
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.innerHTML = '<i class="fas fa-ad"></i> Memutar iklan...';
+        loadingOverlay.style.display = 'flex';
+    }
+}
+
+// Handle content resume (ad finished)
+function onContentResumeRequested() {
+    // Hide loading overlay
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+    
+    // Play the video
+    imaVideoContent.play();
+}
+
+// Handle all ads completed
+function onAllAdsCompleted() {
+    console.log('All ads completed');
+}
+
+// Play video directly without ads (fallback)
+function playVideoDirectly(url) {
+    const videoPlayer = document.getElementById('videoPlayer');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    
+    if (!videoPlayer) return;
+    
+    videoPlayer.src = url;
+    videoPlayer.load();
+    videoPlayer.play();
+    
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+    
+    pendingVideoUrl = null;
+}
+
+// Main function to play video with ads
+function playVideoWithAds(url) {
+    if (!url) return;
+    
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyiapkan video...';
+    }
+    
+    // Check if IMA is available
+    if (typeof google !== 'undefined' && google.ima && !imaInitialized) {
+        initImaSDK();
+        setTimeout(() => requestAds(url), 500);
+    } else if (imaInitialized) {
+        requestAds(url);
+    } else {
+        // Fallback: play without ads
+        playVideoDirectly(url);
+    }
+}
+
+// ==================== SUPABASE FUNCTIONS ====================
+
+// Main function to load all data
 async function loadMovieData() {
     try {
         showLoading(true);
         
-        // Load movie details dari tabel movies
+        // Get movie details from movie_details table
         const { data: movie, error: movieError } = await supabaseClient
-            .from('movies')
+            .from('movie_details')
             .select('*')
             .eq('id', movieId)
             .single();
         
-        if (movieError) {
-            console.error('Movie error:', movieError);
-            throw movieError;
-        }
-        
+        if (movieError) throw movieError;
         if (!movie) throw new Error('Movie tidak ditemukan');
         
         currentMovie = movie;
-        console.log('Movie loaded:', movie);
         
         // Load episodes
-        await loadEpisodes(movieId);
+        await loadEpisodes(movieId, movie);
         
-        // Tampilkan data
+        // Display movie info
         displayMovie(movie, episodes);
         
-        // Increment views
+        // Increment view count
         incrementViews(movie.id, movie.views || 0);
         
-        // Load rekomendasi
+        // Load recommendations
         loadRecommendations(movie.category);
+        
+        // Check if there's a selected episode from localStorage
+        checkSelectedEpisode();
         
     } catch (err) {
         console.error('Error loading data:', err);
@@ -65,61 +280,123 @@ async function loadMovieData() {
     }
 }
 
-// =====================================================
-// FUNGSI LOAD EPISODES
-// =====================================================
-async function loadEpisodes(movieId) {
+// Check for previously selected episode
+function checkSelectedEpisode() {
     try {
+        const saved = localStorage.getItem('selectedEpisode');
+        if (saved) {
+            const data = JSON.parse(saved);
+            if (data.movieId === movieId && data.videoUrl) {
+                setTimeout(() => {
+                    playVideoWithAds(data.videoUrl);
+                    
+                    setTimeout(() => {
+                        document.querySelectorAll('.episode-card').forEach(card => {
+                            const cardNumber = card.getAttribute('data-episode-number');
+                            if (cardNumber && parseInt(cardNumber) === data.episodeNumber) {
+                                card.classList.add('active');
+                                card.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'nearest',
+                                    inline: 'center'
+                                });
+                            }
+                        });
+                    }, 500);
+                }, 1000);
+                
+                localStorage.removeItem('selectedEpisode');
+            }
+        }
+    } catch (e) {
+        console.log('Error checking selected episode:', e);
+    }
+}
+
+// Load episodes from episodes table or episode_urls
+async function loadEpisodes(movieId, movie) {
+    try {
+        // Try to get from episodes table first
         const { data: episodesData, error: episodesError } = await supabaseClient
             .from('episodes')
             .select('*')
             .eq('movie_id', movieId)
             .order('episode_number', { ascending: true });
         
-        if (episodesError) {
-            console.warn('Error loading episodes:', episodesError);
-            episodes = [];
-        } else {
-            episodes = (episodesData || []).map(ep => ({
+        if (!episodesError && episodesData && episodesData.length > 0) {
+            episodes = episodesData.map(ep => ({
                 id: ep.id,
                 title: ep.title || `Episode ${ep.episode_number}`,
                 url: ep.video_url,
                 number: ep.episode_number,
-                duration: ep.duration
+                duration: ep.duration,
+                thumbnail: ep.thumbnail,
+                views: ep.views
+            }));
+        } 
+        // Fallback to episode_urls from movie_details
+        else if (movie.episode_urls && Array.isArray(movie.episode_urls) && movie.episode_urls.length > 0) {
+            episodes = movie.episode_urls.map((url, index) => ({
+                id: `ep-${index + 1}`,
+                title: `Episode ${index + 1}`,
+                url: url,
+                number: index + 1
             }));
         }
-        
-        console.log('Episodes loaded:', episodes.length);
+        // If it's a movie with single video
+        else if (movie.video_url) {
+            episodes = [{
+                id: 'main',
+                title: 'Full Movie',
+                url: movie.video_url,
+                number: 1
+            }];
+        } else {
+            episodes = [];
+        }
     } catch (error) {
-        console.error('Error in loadEpisodes:', error);
-        episodes = [];
+        console.warn('Error loading episodes:', error);
+        
+        // Final fallback
+        if (movie.episode_urls && Array.isArray(movie.episode_urls)) {
+            episodes = movie.episode_urls.map((url, index) => ({
+                id: `ep-${index + 1}`,
+                title: `Episode ${index + 1}`,
+                url: url,
+                number: index + 1
+            }));
+        } else if (movie.video_url) {
+            episodes = [{
+                id: 'main',
+                title: 'Full Movie',
+                url: movie.video_url,
+                number: 1
+            }];
+        } else {
+            episodes = [];
+        }
     }
 }
 
-// =====================================================
-// FUNGSI INCREMENT VIEWS
-// =====================================================
+// Increment view count
 async function incrementViews(movieId, currentViews) {
     try {
         await supabaseClient
-            .from('movies')
-            .update({ views: currentViews + 1 })
+            .from('movie_details')
+            .update({ views: (currentViews || 0) + 1 })
             .eq('id', movieId);
     } catch (error) {
         console.warn('Failed to increment views:', error);
     }
 }
 
-// =====================================================
-// FUNGSI TAMPIL DATA
-// =====================================================
+// Display movie information
 function displayMovie(movie, episodes) {
     document.title = `FilmKu - ${movie.title}`;
     
     setTextContent('movieTitle', movie.title);
     setTextContent('movieDesc', movie.description || 'Tidak ada deskripsi.');
     
-    // Set kategori
     const catEl = document.getElementById('movieCategory');
     if (catEl) {
         catEl.innerText = movie.category === 'film' ? 'Film' : 'Donghua';
@@ -128,157 +405,95 @@ function displayMovie(movie, episodes) {
     
     setTextContent('movieViews', formatNumber(movie.views || 0));
     
-    // Set tanggal
     const dateEl = document.getElementById('movieDate');
-    if (dateEl && movie.created_at) {
-        const date = new Date(movie.created_at).toLocaleDateString('id-ID', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-        dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${date}`;
+    if (dateEl) {
+        if (movie.year) {
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${movie.year}`;
+        } else if (movie.release_date) {
+            const year = new Date(movie.release_date).getFullYear();
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
+        } else if (movie.created_at) {
+            const year = new Date(movie.created_at).getFullYear();
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
+        } else {
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> -`;
+        }
     }
     
     displayEpisodes(episodes, movie);
 }
 
+// Helper to set text content
 function setTextContent(id, text) {
     const el = document.getElementById(id);
     if (el) el.innerText = text;
 }
 
-// =====================================================
-// FUNGSI TAMPIL EPISODE - VERSI FINAL OPSI 1
-// =====================================================
+// Display episodes list
 function displayEpisodes(episodes, movie) {
     const episodesList = document.getElementById('episodesList');
     const episodesSection = document.getElementById('episodesSection');
-    const videoPlayer = document.getElementById('videoPlayer');
     
-    if (!episodesList || !videoPlayer) return;
+    if (!episodesList) return;
     
     episodesList.innerHTML = '';
     
-    console.log('Displaying episodes:', episodes.length, 'for category:', movie.category);
-    
-    // =============== JIKA ADA EPISODE ===============
     if (episodes.length > 0) {
-        // Tampilkan section episode (untuk semua kategori)
-        if (episodesSection) {
-            episodesSection.style.display = 'block';
-        }
+        if (episodesSection) episodesSection.style.display = 'block';
         
-        // Tampilkan semua episode
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'episodes-scroll-container';
+        
         episodes.forEach((ep, index) => {
-            const episodeCard = createEpisodeCard(ep, index);
-            episodesList.appendChild(episodeCard);
+            const episodeCard = document.createElement('div');
+            episodeCard.className = 'episode-card';
+            episodeCard.setAttribute('data-episode-index', index);
+            episodeCard.setAttribute('data-episode-number', ep.number || index + 1);
+            episodeCard.setAttribute('data-video-url', ep.url);
+            
+            const episodeTitle = ep.title || `Episode ${ep.number || index + 1}`;
+            episodeCard.innerHTML = `<span>${episodeTitle}</span>`;
+            
+            episodeCard.onclick = () => {
+                document.querySelectorAll('.episode-card').forEach(c => c.classList.remove('active'));
+                episodeCard.classList.add('active');
+                if (ep.url) {
+                    playVideoWithAds(ep.url);
+                }
+            };
+            
+            scrollContainer.appendChild(episodeCard);
         });
         
-        // Tentukan video yang akan diputar pertama kali
-        if (movie.category === 'film' && movie.video_url) {
-            // Untuk film: putar video utama dari tabel movies
-            // Tapi tetap tampilkan episode sebagai opsi
-            console.log('Playing film video from movie.video_url:', movie.video_url);
-            videoPlayer.src = movie.video_url;
-            
-            // Tandai bahwa tidak ada episode yang aktif (karena yang diputar adalah video utama)
+        episodesList.appendChild(scrollContainer);
+        
+        // Auto play first episode with ads
+        if (episodes[0]?.url) {
+            playVideoWithAds(episodes[0].url);
             setTimeout(() => {
-                document.querySelectorAll('.episode-card').forEach(c => 
-                    c.classList.remove('active')
-                );
+                const firstCard = document.querySelector('.episode-card');
+                if (firstCard) firstCard.classList.add('active');
             }, 100);
-        } else {
-            // Untuk donghua atau film tanpa video_url: putar episode pertama
-            console.log('Playing first episode:', episodes[0]?.url);
-            if (episodes[0]?.url) {
-                videoPlayer.src = episodes[0].url;
-                
-                // Tandai episode pertama sebagai aktif
-                setTimeout(() => {
-                    const firstCard = document.querySelector('.episode-card');
-                    if (firstCard) firstCard.classList.add('active');
-                }, 100);
-            }
         }
-    } 
-    
-    // =============== JIKA TIDAK ADA EPISODE ===============
-    else {
-        if (movie.category === 'donghua') {
-            // Donghua tanpa episode - tampilkan pesan error
-            if (episodesSection) {
-                episodesSection.style.display = 'block';
-            }
+    } else {
+        if (episodesSection) episodesSection.style.display = 'none';
+        if (movie.video_url) {
+            playVideoWithAds(movie.video_url);
+        } else {
             episodesList.innerHTML = `
                 <div class="error-episodes">
-                    <i class="fas fa-exclamation-circle"></i> Tidak ada episode tersedia
+                    <i class="fas fa-exclamation-circle"></i> Video tidak tersedia
                 </div>
             `;
-            
-            // Fallback ke video_url jika ada
-            if (movie.video_url) {
-                console.log('No episodes, playing movie.video_url:', movie.video_url);
-                videoPlayer.src = movie.video_url;
-            }
-        } else {
-            // Film tanpa episode
-            if (episodesSection) {
-                episodesSection.style.display = 'none';
-            }
-            
-            // Putar video_url jika ada
-            if (movie.video_url) {
-                console.log('Playing film video from movie.video_url:', movie.video_url);
-                videoPlayer.src = movie.video_url;
-            } else {
-                // Tidak ada video sama sekali
-                episodesList.innerHTML = `
-                    <div class="error-episodes">
-                        <i class="fas fa-exclamation-circle"></i> Video tidak tersedia
-                    </div>
-                `;
-            }
         }
     }
 }
 
-// =====================================================
-// FUNGSI MEMBUAT EPISODE CARD
-// =====================================================
-function createEpisodeCard(episode, index) {
-    const card = document.createElement('div');
-    card.className = 'episode-card';
-    card.setAttribute('data-episode-index', index);
-    
-    const episodeTitle = episode.title || `Episode ${episode.number || index + 1}`;
-    card.innerHTML = `<span>${episodeTitle}</span>`;
-    
-    card.onclick = () => {
-        // Hapus class active dari semua episode
-        document.querySelectorAll('.episode-card').forEach(c => 
-            c.classList.remove('active')
-        );
-        
-        // Tambahkan class active ke episode yang diklik
-        card.classList.add('active');
-        
-        // Putar video episode
-        if (episode.url) {
-            console.log('Playing selected episode:', episode.url);
-            document.getElementById('videoPlayer').src = episode.url;
-        }
-    };
-    
-    return card;
-}
-
-// =====================================================
-// FUNGSI LOAD REKOMENDASI
-// =====================================================
+// Load recommendations
 async function loadRecommendations(category) {
     try {
         const { data, error } = await supabaseClient
-            .from('movies')
+            .from('movie_details')
             .select('*')
             .eq('category', category)
             .neq('id', movieId)
@@ -299,22 +514,30 @@ async function loadRecommendations(category) {
     }
 }
 
+// Create recommendation card
 function createRecommendationCard(movie) {
     const thumb = movie.thumbnail || 'https://via.placeholder.com/200x300?text=No+Image';
+    const episodeCount = movie.total_episodes || (movie.episode_urls ? movie.episode_urls.length : 0) || movie.episodes || 0;
+    
     return `
         <div class="movie-card" onclick="window.location.href='player.html?id=${movie.id}'">
             <div class="movie-poster">
                 <img src="${thumb}" alt="${movie.title}" loading="lazy" 
                      onerror="this.src='https://via.placeholder.com/200x300?text=Error'">
+                <span class="movie-category ${movie.category}">${movie.category}</span>
             </div>
-            <h4>${movie.title}</h4>
+            <div class="movie-info">
+                <h4 class="movie-title">${movie.title}</h4>
+                <div class="movie-meta">
+                    <span><i class="fas fa-eye"></i> ${movie.views || 0}</span>
+                    ${episodeCount > 0 ? `<span><i class="fas fa-list"></i> ${episodeCount}</span>` : ''}
+                </div>
+            </div>
         </div>
     `;
 }
 
-// =====================================================
-// FUNGSI UTILITY
-// =====================================================
+// Format number with K/M suffix
 function formatNumber(num) {
     if (!num) return '0';
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'Jt';
@@ -322,13 +545,18 @@ function formatNumber(num) {
     return num.toString();
 }
 
+// Show/hide loading overlay
 function showLoading(show) {
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.style.display = show ? 'flex' : 'none';
+        if (show) {
+            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+        }
     }
 }
 
+// Show error message
 function showError(message) {
     const episodesList = document.getElementById('episodesList');
     if (episodesList) {
@@ -338,13 +566,10 @@ function showError(message) {
             </div>
         `;
     }
-    
     setTextContent('movieTitle', 'Error');
 }
 
-// =====================================================
-// FUNGSI VIDEO PLAYER
-// =====================================================
+// Setup video player event listeners
 function setupVideoPlayer() {
     const videoPlayer = document.getElementById('videoPlayer');
     const loadingOverlay = document.querySelector('.loading-overlay');
@@ -352,12 +577,16 @@ function setupVideoPlayer() {
     if (!videoPlayer || !loadingOverlay) return;
     
     videoPlayer.addEventListener('loadstart', () => {
-        loadingOverlay.classList.remove('hidden');
-        loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+        if (!imaAdsManager) { // Only show if not playing ads
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+        }
     });
     
     videoPlayer.addEventListener('canplay', () => {
-        loadingOverlay.classList.add('hidden');
+        if (!imaAdsManager) {
+            loadingOverlay.classList.add('hidden');
+        }
     });
     
     videoPlayer.addEventListener('error', (e) => {
@@ -367,9 +596,23 @@ function setupVideoPlayer() {
     });
 }
 
-// =====================================================
-// FUNGSI SHARE
-// =====================================================
+// Handle resize events for ads
+window.addEventListener('resize', () => {
+    if (imaAdsManager && imaVideoContent) {
+        try {
+            imaAdsManager.resize(
+                imaVideoContent.offsetWidth,
+                imaVideoContent.offsetHeight,
+                google.ima.ViewMode.NORMAL
+            );
+        } catch (e) {
+            console.error('Error resizing ads:', e);
+        }
+    }
+});
+
+// ==================== SHARE FUNCTIONS ====================
+
 const ShareFunctions = {
     openModal: () => {
         const modal = document.getElementById('shareModal');
@@ -388,13 +631,11 @@ const ShareFunctions = {
         if (input) {
             input.select();
             document.execCommand('copy');
-            
             const toast = document.getElementById('toast');
             if (toast) {
                 toast.style.display = 'block';
                 setTimeout(() => toast.style.display = 'none', 2000);
             }
-            
             ShareFunctions.closeModal();
         }
     },
@@ -404,58 +645,50 @@ const ShareFunctions = {
         const title = encodeURIComponent(document.getElementById('movieTitle')?.innerText || 'FilmKu');
         let shareUrl = '';
         
-        if (platform === 'whatsapp') {
-            shareUrl = `https://wa.me/?text=${title}%20-%20${url}`;
-        } else if (platform === 'facebook') {
-            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-        } else if (platform === 'telegram') {
-            shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
-        }
+        if (platform === 'whatsapp') shareUrl = `https://wa.me/?text=${title}%20-%20${url}`;
+        else if (platform === 'facebook') shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        else if (platform === 'telegram') shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
         
-        if (shareUrl) {
-            window.open(shareUrl, '_blank', 'width=600,height=400');
-        }
+        if (shareUrl) window.open(shareUrl, '_blank', 'width=600,height=400');
     }
 };
 
-// Fungsi untuk inisialisasi iklan
-function initAds() {
-    try {
-        if (window.adsbygoogle) {
-            (adsbygoogle = window.adsbygoogle || []).push({});
-        }
-    } catch (e) {
-        console.log('AdSense init error:', e);
-    }
-}
-
-// Expose functions to window
+// Make share functions global
 window.openShareModal = ShareFunctions.openModal;
 window.closeModal = ShareFunctions.closeModal;
 window.copyShareLink = ShareFunctions.copyLink;
 window.shareVia = ShareFunctions.shareVia;
 
-// Close modal on outside click
+// Close modal when clicking outside
 window.onclick = (e) => {
     const modal = document.getElementById('shareModal');
-    if (e.target === modal) {
-        ShareFunctions.closeModal();
-    }
+    if (e.target === modal) ShareFunctions.closeModal();
 };
 
-// =====================================================
-// INITIALIZATION
-// =====================================================
+// ==================== INITIALIZATION ====================
+
+// Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
     if (!movieId) {
         window.location.href = 'index.html';
         return;
     }
     
-    console.log('Loading movie with ID:', movieId);
     loadMovieData();
     setupVideoPlayer();
     
-    // Inisialisasi iklan Google AdSense
-    setTimeout(initAds, 500);
+    // Initialize IMA SDK after a short delay
+    setTimeout(() => {
+        if (typeof google !== 'undefined' && google.ima) {
+            initImaSDK();
+        } else {
+            console.warn('IMA SDK not loaded yet, retrying...');
+            // Retry after 1 second
+            setTimeout(() => {
+                if (typeof google !== 'undefined' && google.ima) {
+                    initImaSDK();
+                }
+            }, 1000);
+        }
+    }, 500);
 });

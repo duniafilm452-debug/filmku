@@ -1,4 +1,4 @@
-// script.js - VERSI DIPERBAIKI dengan tabel movie_details
+// script.js - VERSI TERBAIK dengan struktur tabel movie_details
 
 const CONFIG = {
   SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
@@ -20,7 +20,6 @@ const State = {
   filteredCache: null,
   isLoading: false,
   
-  // Get filtered movies with caching
   getFilteredMovies() {
     if (this.filteredCache) return this.filteredCache;
     
@@ -30,13 +29,11 @@ const State = {
       return catMatch && searchMatch;
     });
 
-    // Apply sorting based on tab
     if (this.currentTab === 'populer') {
       filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
     } else if (this.currentTab === 'terbaru') {
       filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     } else {
-      // For rekomendasi, randomize a bit
       filtered = [...filtered].sort(() => Math.random() - 0.5);
     }
     
@@ -70,27 +67,12 @@ const DOM = {
   }
 };
 
-// Fungsi untuk inisialisasi iklan
-function initAds() {
-  try {
-    if (window.adsbygoogle) {
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    }
-  } catch (e) {
-    console.log('AdSense init error:', e);
-  }
-}
-
 // UI Functions
 const UI = {
-  // Create movie card HTML
   createMovieCard(movie) {
     const thumb = movie.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%23252525\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23666666\' font-family=\'Arial\' font-size=\'20\'%3ENo Image%3C/text%3E%3C/svg%3E';
     
-    // Hitung jumlah episode jika ada
-    const episodeCount = movie.episode_urls && Array.isArray(movie.episode_urls) 
-      ? movie.episode_urls.length 
-      : (movie.episodes || 0);
+    const episodeCount = movie.total_episodes || (movie.episode_urls ? movie.episode_urls.length : 0) || movie.episodes || 0;
     
     return `
       <article class="movie-card" onclick="window.location.href='player.html?id=${movie.id}'">
@@ -104,12 +86,12 @@ const UI = {
           <div class="movie-meta">
             <span><i class="fas fa-eye"></i> ${movie.views || 0}</span>
             ${episodeCount > 0 ? `<span><i class="fas fa-list"></i> ${episodeCount} eps</span>` : ''}
+            ${movie.year ? `<span><i class="fas fa-calendar"></i> ${movie.year}</span>` : ''}
           </div>
         </div>
       </article>`;
   },
 
-  // Render movies with pagination
   renderMovies() {
     const filtered = State.getFilteredMovies();
     
@@ -119,9 +101,6 @@ const UI = {
           <i class="fas fa-film"></i>
           <p>Tidak ada film ditemukan</p>
         </div>`;
-      
-      // Inisialisasi iklan
-      setTimeout(initAds, 100);
       return;
     }
 
@@ -131,7 +110,6 @@ const UI = {
     
     let html = paginated.map(m => this.createMovieCard(m)).join('');
     
-    // Add pagination if needed
     const totalPages = Math.ceil(filtered.length / CONFIG.ITEMS_PER_PAGE);
     if (totalPages > 1) {
       html += `
@@ -148,36 +126,25 @@ const UI = {
     
     DOM.moviesList.innerHTML = html;
     
-    // Scroll to top smoothly when changing pages
     if (State.currentPage > 1) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    
-    // Inisialisasi iklan setelah konten dimuat
-    setTimeout(initAds, 100);
   },
 
-  // Update active tab styles
   setActiveTab(tab) {
     Object.keys(DOM.tabButtons).forEach(key => {
-      DOM.tabButtons[key]?.classList.remove('active');
+      if (DOM.tabButtons[key]) DOM.tabButtons[key].classList.remove('active');
     });
-    if (DOM.tabButtons[tab]) {
-      DOM.tabButtons[tab].classList.add('active');
-    }
+    if (DOM.tabButtons[tab]) DOM.tabButtons[tab].classList.add('active');
   },
 
-  // Update active category styles
   setActiveCategory(cat) {
     Object.keys(DOM.categoryButtons).forEach(key => {
-      DOM.categoryButtons[key]?.classList.remove('active');
+      if (DOM.categoryButtons[key]) DOM.categoryButtons[key].classList.remove('active');
     });
-    if (DOM.categoryButtons[cat]) {
-      DOM.categoryButtons[cat].classList.add('active');
-    }
+    if (DOM.categoryButtons[cat]) DOM.categoryButtons[cat].classList.add('active');
   },
 
-  // Show loading state
   showLoading() {
     DOM.moviesList.innerHTML = `
       <div class="loading-state">
@@ -186,11 +153,10 @@ const UI = {
       </div>`;
   },
 
-  // Hide loading (just a placeholder)
   hideLoading() {}
 };
 
-// Global functions for navigation
+// Global functions
 window.loadTab = (tab) => {
   State.currentTab = tab;
   State.resetPagination();
@@ -232,26 +198,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   UI.showLoading();
   
   try {
-    // PERBAIKAN: Gunakan tabel movie_details, BUKAN movies
-    console.log('Mengambil data dari tabel: movie_details');
-    
     const { data, error } = await supabaseClient
-      .from('movie_details')  // <-- INI YANG DIUBAH
+      .from('movie_details')
       .select('*')
       .order('created_at', { ascending: false });
     
     if (error) throw error;
     
-    console.log(`Berhasil memuat ${data?.length || 0} film dari movie_details`);
-    console.log('Contoh data:', data?.[0]);
-    
     State.movies = data || [];
     UI.renderMovies();
     
-    // Inisialisasi iklan pertama kali
-    setTimeout(initAds, 500);
-    
-    // Setup search with debounce
     let searchTimeout;
     DOM.searchInput.addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
@@ -263,7 +219,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, CONFIG.DEBOUNCE_DELAY);
     });
     
-    // Scroll to top button visibility
     window.addEventListener('scroll', () => {
       if (window.scrollY > 400) {
         DOM.scrollTopBtn.classList.add('show');
@@ -280,8 +235,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         <p>Gagal memuat data: ${error.message}</p>
         <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #e50914; border: none; border-radius: 4px; color: white; cursor: pointer;">Refresh</button>
       </div>`;
-    
-    // Inisialisasi iklan meskipun error
-    setTimeout(initAds, 500);
   }
 });
