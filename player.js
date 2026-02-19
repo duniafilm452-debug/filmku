@@ -1,4 +1,4 @@
-// player.js - VERSI HYBRID untuk Embed & MP4 dengan IMA SDK
+// player.js - VERSI FINAL dengan urutan fungsi yang benar
 
 const CONFIG = {
     SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
@@ -21,6 +21,46 @@ let imaVideoContent;
 let imaInitialized = false;
 let pendingVideoUrl = null;
 
+// ==================== HELPER FUNCTIONS ====================
+
+// Format number with K/M suffix
+function formatNumber(num) {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'Jt';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'Rb';
+    return num.toString();
+}
+
+// Helper to set text content
+function setTextContent(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
+}
+
+// Show/hide loading overlay
+function showLoading(show) {
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = show ? 'flex' : 'none';
+        if (show) {
+            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+        }
+    }
+}
+
+// Show error message
+function showError(message) {
+    const episodesList = document.getElementById('episodesList');
+    if (episodesList) {
+        episodesList.innerHTML = `
+            <div class="error-episodes">
+                <i class="fas fa-exclamation-circle"></i> ${message}
+            </div>
+        `;
+    }
+    setTextContent('movieTitle', 'Error');
+}
+
 // ==================== DETEKSI JENIS URL ====================
 
 // Deteksi apakah URL adalah embed (YouTube, Dailymotion, dll)
@@ -36,17 +76,163 @@ function isEmbedUrl(url) {
            url.includes('twitch.tv');
 }
 
+// Deteksi apakah URL adalah dari Cloudflare R2
+function isCloudflareR2Url(url) {
+    if (!url) return false;
+    return url.includes('.r2.dev') || 
+           url.includes('.r2.cloudflarestorage.com') ||
+           url.includes('r2.dev/');
+}
+
+// Deteksi apakah URL adalah file video langsung
+function isDirectVideoUrl(url) {
+    if (!url) return false;
+    
+    // Cek ekstensi file video
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi', '.m4v'];
+    const hasVideoExtension = videoExtensions.some(ext => url.toLowerCase().includes(ext));
+    
+    // Cek Cloudflare R2 (meskipun tanpa ekstensi)
+    const isR2 = isCloudflareR2Url(url);
+    
+    return hasVideoExtension || isR2;
+}
+
 // Deteksi apakah URL adalah HLS (m3u8)
 function isHlsUrl(url) {
     if (!url) return false;
     return url.includes('.m3u8');
 }
 
-// Deteksi apakah URL adalah file video langsung (MP4, WebM, dll)
-function isDirectVideoUrl(url) {
-    if (!url) return false;
-    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi', '.m4v'];
-    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+// ==================== SUPABASE FUNCTIONS ====================
+
+// Increment view count
+async function incrementViews(movieId, currentViews) {
+    try {
+        await supabaseClient
+            .from('movie_details')
+            .update({ views: (currentViews || 0) + 1 })
+            .eq('id', movieId);
+    } catch (error) {
+        console.warn('Failed to increment views:', error);
+    }
+}
+
+// Load episodes from episodes table or episode_urls
+async function loadEpisodes(movieId, movie) {
+    try {
+        // Try to get from episodes table first
+        const { data: episodesData, error: episodesError } = await supabaseClient
+            .from('episodes')
+            .select('*')
+            .eq('movie_id', movieId)
+            .order('episode_number', { ascending: true });
+        
+        if (!episodesError && episodesData && episodesData.length > 0) {
+            episodes = episodesData.map(ep => ({
+                id: ep.id,
+                title: ep.title || `Episode ${ep.episode_number}`,
+                url: ep.video_url,
+                number: ep.episode_number,
+                duration: ep.duration,
+                thumbnail: ep.thumbnail,
+                views: ep.views
+            }));
+        } 
+        // Fallback to episode_urls from movie_details
+        else if (movie.episode_urls && Array.isArray(movie.episode_urls) && movie.episode_urls.length > 0) {
+            episodes = movie.episode_urls.map((url, index) => ({
+                id: `ep-${index + 1}`,
+                title: `Episode ${index + 1}`,
+                url: url,
+                number: index + 1
+            }));
+        }
+        // If it's a movie with single video
+        else if (movie.video_url) {
+            episodes = [{
+                id: 'main',
+                title: 'Full Movie',
+                url: movie.video_url,
+                number: 1
+            }];
+        } else {
+            episodes = [];
+        }
+    } catch (error) {
+        console.warn('Error loading episodes:', error);
+        
+        // Final fallback
+        if (movie.episode_urls && Array.isArray(movie.episode_urls)) {
+            episodes = movie.episode_urls.map((url, index) => ({
+                id: `ep-${index + 1}`,
+                title: `Episode ${index + 1}`,
+                url: url,
+                number: index + 1
+            }));
+        } else if (movie.video_url) {
+            episodes = [{
+                id: 'main',
+                title: 'Full Movie',
+                url: movie.video_url,
+                number: 1
+            }];
+        } else {
+            episodes = [];
+        }
+    }
+}
+
+// Create recommendation card
+function createRecommendationCard(movie) {
+    const thumb = movie.thumbnail || 'https://via.placeholder.com/200x300?text=No+Image';
+    const episodeCount = movie.total_episodes || (movie.episode_urls ? movie.episode_urls.length : 0) || movie.episodes || 0;
+    
+    return `
+        <div class="movie-card" onclick="window.location.href='player.html?id=${movie.id}'">
+            <div class="movie-poster">
+                <img src="${thumb}" alt="${movie.title}" loading="lazy" 
+                     onerror="this.src='https://via.placeholder.com/200x300?text=Error'">
+                <span class="movie-category ${movie.category}">${movie.category}</span>
+            </div>
+            <div class="movie-info">
+                <h4 class="movie-title">${movie.title}</h4>
+                <div class="movie-meta">
+                    <span><i class="fas fa-eye"></i> ${formatNumber(movie.views || 0)}</span>
+                    ${episodeCount > 0 ? `<span><i class="fas fa-list"></i> ${episodeCount}</span>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Load recommendations
+async function loadRecommendations(category) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('movie_details')
+            .select('*')
+            .eq('category', category)
+            .neq('id', movieId)
+            .limit(6);
+
+        if (error) throw error;
+
+        const recList = document.getElementById('recommendationsList');
+        if (!recList) return;
+        
+        if (data && data.length > 0) {
+            recList.innerHTML = data.map(createRecommendationCard).join('');
+        } else {
+            recList.innerHTML = '<p class="no-recommendations">Tidak ada rekomendasi serupa.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        const recList = document.getElementById('recommendationsList');
+        if (recList) {
+            recList.innerHTML = '<p class="no-recommendations">Gagal memuat rekomendasi.</p>';
+        }
+    }
 }
 
 // ==================== PLAYER FUNCTIONS ====================
@@ -79,6 +265,28 @@ function resetPlayer() {
         } catch (e) {}
         imaAdsManager = null;
     }
+}
+
+// Play video directly without ads (fallback)
+function playVideoDirectly(url) {
+    const videoPlayer = document.getElementById('videoPlayer');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    
+    if (!videoPlayer) return;
+    
+    console.log('Playing video directly (fallback):', url);
+    
+    videoPlayer.src = url;
+    videoPlayer.load();
+    videoPlayer.play().catch(e => {
+        console.warn('Autoplay failed:', e);
+    });
+    
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+    
+    pendingVideoUrl = null;
 }
 
 // Play video embed (YouTube, Dailymotion, dll) - TANPA IKLAN
@@ -166,27 +374,17 @@ function playHlsVideoWithAds(url) {
     playVideoWithAds(url);
 }
 
-// Main function untuk memutar video berdasarkan jenis URL
-function playVideo(url) {
-    if (!url) return;
+// Fungsi untuk memutar video dari Cloudflare R2
+function playCloudflareVideo(url) {
+    console.log('Playing Cloudflare R2 video with ads:', url);
     
-    console.log('Playing video:', url);
-    resetPlayer();
+    const videoPlayer = document.getElementById('videoPlayer');
     
-    if (isEmbedUrl(url)) {
-        // Embed video - putar langsung tanpa iklan
-        playEmbedVideo(url);
-    } else if (isHlsUrl(url)) {
-        // HLS video - putar dengan IMA
-        playHlsVideo(url);
-    } else if (isDirectVideoUrl(url)) {
-        // Direct video file - putar dengan IMA
-        playVideoWithAds(url);
-    } else {
-        // Unknown type - coba sebagai direct video
-        console.warn('Unknown video type, trying as direct video:', url);
-        playVideoWithAds(url);
-    }
+    // Pastikan CORS diatur dengan benar
+    videoPlayer.crossOrigin = 'anonymous';
+    
+    // Play dengan IMA
+    playVideoWithAds(url);
 }
 
 // ==================== IMA SDK FUNCTIONS ====================
@@ -257,7 +455,6 @@ function requestAds(videoUrl) {
         adsRequest.nonLinearAdSlotHeight = Math.floor(playerHeight / 3);
         
         adsRequest.forceNonLinearFullSlot = true;
-        adsRequest.adType = google.ima.AdType.VIDEO;
         
         // Store video URL for later use
         pendingVideoUrl = videoUrl;
@@ -279,8 +476,6 @@ function onAdsManagerLoaded(event) {
         const adsRenderingSettings = new google.ima.AdsRenderingSettings();
         adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
         adsRenderingSettings.enablePreloading = true;
-        adsRenderingSettings.useStyledLinearAds = true;
-        adsRenderingSettings.useStyledNonLinearAds = true;
         
         imaAdsManager = event.getAdsManager(
             imaVideoContent,
@@ -311,11 +506,6 @@ function onAdsManagerLoaded(event) {
         imaAdsManager.addEventListener(
             google.ima.AdEvent.Type.STARTED,
             onAdStarted
-        );
-        
-        imaAdsManager.addEventListener(
-            google.ima.AdEvent.Type.LOADED,
-            onAdLoaded
         );
         
         // Initialize ad container
@@ -407,43 +597,6 @@ function onAdStarted(event) {
         loadingOverlay.innerHTML = '<i class="fas fa-ad"></i> Iklan sedang diputar...';
         loadingOverlay.style.display = 'flex';
     }
-    
-    setTimeout(() => {
-        const adContainer = document.querySelector('.ima-ad-container');
-        if (adContainer) {
-            adContainer.style.display = 'block';
-            adContainer.style.visibility = 'visible';
-            adContainer.style.opacity = '1';
-            adContainer.style.zIndex = '1000';
-        }
-    }, 100);
-}
-
-// Handle ad loaded
-function onAdLoaded(event) {
-    console.log('Ad loaded:', event);
-}
-
-// Play video directly without ads (fallback)
-function playVideoDirectly(url) {
-    const videoPlayer = document.getElementById('videoPlayer');
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    
-    if (!videoPlayer) return;
-    
-    console.log('Playing video directly (fallback):', url);
-    
-    videoPlayer.src = url;
-    videoPlayer.load();
-    videoPlayer.play().catch(e => {
-        console.warn('Autoplay failed:', e);
-    });
-    
-    if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-    }
-    
-    pendingVideoUrl = null;
 }
 
 // Main function to play video with ads (untuk direct video)
@@ -481,36 +634,63 @@ function playVideoWithAds(url) {
     }
 }
 
-// ==================== SUPABASE FUNCTIONS ====================
-
-// Main function to load all data
-async function loadMovieData() {
-    try {
-        showLoading(true);
-        
-        const { data: movie, error: movieError } = await supabaseClient
-            .from('movie_details')
-            .select('*')
-            .eq('id', movieId)
-            .single();
-        
-        if (movieError) throw movieError;
-        if (!movie) throw new Error('Movie tidak ditemukan');
-        
-        currentMovie = movie;
-        
-        await loadEpisodes(movieId, movie);
-        displayMovie(movie, episodes);
-        incrementViews(movie.id, movie.views || 0);
-        loadRecommendations(movie.category);
-        checkSelectedEpisode();
-        
-    } catch (err) {
-        console.error('Error loading data:', err);
-        showError(err.message);
-    } finally {
-        showLoading(false);
+// Main function untuk memutar video berdasarkan jenis URL
+function playVideo(url) {
+    if (!url) return;
+    
+    console.log('Playing video:', url);
+    resetPlayer();
+    
+    if (isEmbedUrl(url)) {
+        // Embed video - putar langsung tanpa iklan
+        playEmbedVideo(url);
+    } else if (isHlsUrl(url)) {
+        // HLS video - putar dengan IMA
+        playHlsVideo(url);
+    } else if (isCloudflareR2Url(url)) {
+        // Cloudflare R2 video - putar dengan IMA
+        playCloudflareVideo(url);
+    } else if (isDirectVideoUrl(url)) {
+        // Direct video file - putar dengan IMA
+        playVideoWithAds(url);
+    } else {
+        // Unknown type - coba sebagai direct video
+        console.warn('Unknown video type, trying as direct video:', url);
+        playVideoWithAds(url);
     }
+}
+
+// Setup video player event listeners
+function setupVideoPlayer() {
+    const videoPlayer = document.getElementById('videoPlayer');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    
+    if (!videoPlayer || !loadingOverlay) return;
+    
+    videoPlayer.addEventListener('loadstart', () => {
+        if (!imaAdsManager) { // Only show if not playing ads
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+        }
+    });
+    
+    videoPlayer.addEventListener('canplay', () => {
+        if (!imaAdsManager) {
+            loadingOverlay.classList.add('hidden');
+        }
+    });
+    
+    videoPlayer.addEventListener('error', (e) => {
+        console.error('Video error:', e);
+        
+        // Cek apakah ini error CORS
+        if (videoPlayer.error && videoPlayer.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+            loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error video. Mungkin masalah CORS.';
+        } else {
+            loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat video';
+        }
+        loadingOverlay.classList.remove('hidden');
+    });
 }
 
 // Check for previously selected episode
@@ -546,63 +726,6 @@ function checkSelectedEpisode() {
     }
 }
 
-// Load episodes
-async function loadEpisodes(movieId, movie) {
-    try {
-        const { data: episodesData, error: episodesError } = await supabaseClient
-            .from('episodes')
-            .select('*')
-            .eq('movie_id', movieId)
-            .order('episode_number', { ascending: true });
-        
-        if (!episodesError && episodesData && episodesData.length > 0) {
-            episodes = episodesData.map(ep => ({
-                id: ep.id,
-                title: ep.title || `Episode ${ep.episode_number}`,
-                url: ep.video_url,
-                number: ep.episode_number
-            }));
-        } 
-        else if (movie.episode_urls && Array.isArray(movie.episode_urls) && movie.episode_urls.length > 0) {
-            episodes = movie.episode_urls.map((url, index) => ({
-                id: `ep-${index + 1}`,
-                title: `Episode ${index + 1}`,
-                url: url,
-                number: index + 1
-            }));
-        }
-        else if (movie.video_url) {
-            episodes = [{
-                id: 'main',
-                title: 'Full Movie',
-                url: movie.video_url,
-                number: 1
-            }];
-        } else {
-            episodes = [];
-        }
-    } catch (error) {
-        console.warn('Error loading episodes:', error);
-        if (movie.episode_urls && Array.isArray(movie.episode_urls)) {
-            episodes = movie.episode_urls.map((url, index) => ({
-                id: `ep-${index + 1}`,
-                title: `Episode ${index + 1}`,
-                url: url,
-                number: index + 1
-            }));
-        } else if (movie.video_url) {
-            episodes = [{
-                id: 'main',
-                title: 'Full Movie',
-                url: movie.video_url,
-                number: 1
-            }];
-        } else {
-            episodes = [];
-        }
-    }
-}
-
 // Display movie information
 function displayMovie(movie, episodes) {
     document.title = `FilmKu - ${movie.title}`;
@@ -622,18 +745,18 @@ function displayMovie(movie, episodes) {
     if (dateEl) {
         if (movie.year) {
             dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${movie.year}`;
+        } else if (movie.release_date) {
+            const year = new Date(movie.release_date).getFullYear();
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
+        } else if (movie.created_at) {
+            const year = new Date(movie.created_at).getFullYear();
+            dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${year}`;
         } else {
             dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> -`;
         }
     }
     
     displayEpisodes(episodes, movie);
-}
-
-// Helper to set text content
-function setTextContent(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.innerText = text;
 }
 
 // Display episodes list
@@ -665,7 +788,7 @@ function displayEpisodes(episodes, movie) {
                 document.querySelectorAll('.episode-card').forEach(c => c.classList.remove('active'));
                 episodeCard.classList.add('active');
                 if (ep.url) {
-                    playVideo(ep.url); // Menggunakan playVideo yang sudah ditingkatkan
+                    playVideo(ep.url);
                 }
             };
             
@@ -696,85 +819,60 @@ function displayEpisodes(episodes, movie) {
     }
 }
 
-// Load recommendations
-async function loadRecommendations(category) {
+// Main function to load all data
+async function loadMovieData() {
     try {
-        const { data, error } = await supabaseClient
+        showLoading(true);
+        
+        // Get movie details from movie_details table
+        const { data: movie, error: movieError } = await supabaseClient
             .from('movie_details')
             .select('*')
-            .eq('category', category)
-            .neq('id', movieId)
-            .limit(6);
-
-        if (error) throw error;
-
-        const recList = document.getElementById('recommendationsList');
-        if (!recList) return;
+            .eq('id', movieId)
+            .single();
         
-        if (data && data.length > 0) {
-            recList.innerHTML = data.map(createRecommendationCard).join('');
-        } else {
-            recList.innerHTML = '<p class="no-recommendations">Tidak ada rekomendasi serupa.</p>';
-        }
-    } catch (error) {
-        console.error('Error loading recommendations:', error);
+        if (movieError) throw movieError;
+        if (!movie) throw new Error('Movie tidak ditemukan');
+        
+        currentMovie = movie;
+        
+        // Load episodes
+        await loadEpisodes(movieId, movie);
+        
+        // Display movie info
+        displayMovie(movie, episodes);
+        
+        // Increment view count
+        incrementViews(movie.id, movie.views || 0);
+        
+        // Load recommendations
+        loadRecommendations(movie.category);
+        
+        // Check if there's a selected episode from localStorage
+        checkSelectedEpisode();
+        
+    } catch (err) {
+        console.error('Error loading data:', err);
+        showError(err.message);
+    } finally {
+        showLoading(false);
     }
 }
 
-// Create recommendation card
-function createRecommendationCard(movie) {
-    const thumb = movie.thumbnail || 'https://via.placeholder.com/200x300?text=No+Image';
-    const episodeCount = movie.total_episodes || (movie.episode_urls ? movie.episode_urls.length : 0) || movie.episodes || 0;
-    
-    return `
-        <div class="movie-card" onclick="window.location.href='player.html?id=${movie.id}'">
-            <div class="movie-poster">
-                <img src="${thumb}" alt="${movie.title}" loading="lazy" 
-                     onerror="this.src='https://via.placeholder.com/200x300?text=Error'">
-                <span class="movie-category ${movie.category}">${movie.category}</span>
-            </div>
-            <div class="movie-info">
-                <h4 class="movie-title">${movie.title}</h4>
-                <div class="movie-meta">
-                    <span><i class="fas fa-eye"></i> ${movie.views || 0}</span>
-                    ${episodeCount > 0 ? `<span><i class="fas fa-list"></i> ${episodeCount}</span>` : ''}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// Format number
-function formatNumber(num) {
-    if (!num) return '0';
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'Jt';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'Rb';
-    return num.toString();
-}
-
-// Show/hide loading
-function showLoading(show) {
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.display = show ? 'flex' : 'none';
-        if (show) {
-            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+// Handle resize events for ads
+window.addEventListener('resize', () => {
+    if (imaAdsManager && imaVideoContent) {
+        try {
+            imaAdsManager.resize(
+                imaVideoContent.offsetWidth || 640,
+                imaVideoContent.offsetHeight || 360,
+                google.ima.ViewMode.NORMAL
+            );
+        } catch (e) {
+            console.error('Error resizing ads:', e);
         }
     }
-}
-
-// Show error
-function showError(message) {
-    const episodesList = document.getElementById('episodesList');
-    if (episodesList) {
-        episodesList.innerHTML = `
-            <div class="error-episodes">
-                <i class="fas fa-exclamation-circle"></i> ${message}
-            </div>
-        `;
-    }
-    setTextContent('movieTitle', 'Error');
-}
+});
 
 // ==================== SHARE FUNCTIONS ====================
 
@@ -840,6 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     loadMovieData();
+    setupVideoPlayer();
     
     // Initialize IMA SDK after a short delay
     setTimeout(() => {
