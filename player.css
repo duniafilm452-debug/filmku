@@ -109,7 +109,7 @@ body {
 
 .header-content {
   display: flex !important;
-  justify-content: flex-start !important; /* Membuat logo di kiri */
+  justify-content: flex-start !important;
   align-items: center !important;
   max-width: 1400px !important;
   margin: 0 auto !important;
@@ -141,7 +141,7 @@ body {
   font-size: 24px !important;
   font-weight: bold !important;
   letter-spacing: 1px !important;
-  display: inline-block !important; /* Memastikan nama FilmKu tampil */
+  display: inline-block !important;
 }
 
 /* Video Player Section */

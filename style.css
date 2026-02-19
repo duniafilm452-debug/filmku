@@ -72,7 +72,7 @@ html {
 
 @media (min-width: 768px) {
   html {
-    font-size: 18px; /* Diperbesar dari 16px menjadi 18px untuk desktop */
+    font-size: 18px;
   }
 }
 
@@ -107,7 +107,7 @@ body {
 
 @media (min-width: 768px) {
   .site-header {
-    height: 80px; /* Header lebih tinggi di desktop */
+    height: 80px;
   }
 }
 
@@ -129,7 +129,7 @@ body {
 
 @media (min-width: 768px) {
   .logo-img {
-    width: 50px; /* Logo lebih besar di desktop */
+    width: 50px;
     height: 50px;
   }
 }
@@ -149,7 +149,7 @@ body {
 
 @media (min-width: 768px) {
   .logo {
-    font-size: 2rem; /* Logo lebih besar di desktop */
+    font-size: 2rem;
   }
 }
 
@@ -164,7 +164,7 @@ body {
 
 @media (min-width: 768px) {
   .search-wrapper {
-    max-width: 500px; /* Search lebih lebar di desktop */
+    max-width: 500px;
   }
 }
 
@@ -180,7 +180,7 @@ body {
 
 @media (min-width: 768px) {
   .search-icon {
-    font-size: 1.2rem; /* Icon search lebih besar di desktop */
+    font-size: 1.2rem;
     left: calc(var(--spacing-md) * 1.5);
   }
 }
@@ -198,8 +198,8 @@ body {
 
 @media (min-width: 768px) {
   #searchInput {
-    padding: 1rem 1.5rem 1rem 3.5rem; /* Padding lebih besar di desktop */
-    font-size: 1.1rem; /* Font lebih besar di desktop */
+    padding: 1rem 1.5rem 1rem 3.5rem;
+    font-size: 1.1rem;
   }
 }
 
@@ -228,8 +228,8 @@ body {
 
 @media (min-width: 768px) {
   .tabs, .kategori {
-    padding: var(--spacing-xl) var(--spacing-2xl); /* Padding lebih besar di desktop */
-    gap: var(--spacing-lg); /* Gap lebih besar di desktop */
+    padding: var(--spacing-xl) var(--spacing-2xl);
+    gap: var(--spacing-lg);
   }
 }
 
@@ -253,9 +253,9 @@ body {
 
 @media (min-width: 768px) {
   .tabs button, .kategori button {
-    padding: 1rem 2.5rem; /* Padding lebih besar di desktop */
-    font-size: 1.2rem; /* Font lebih besar di desktop */
-    gap: var(--spacing-md); /* Gap lebih besar di desktop */
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+    gap: var(--spacing-md);
   }
 }
 
@@ -284,7 +284,7 @@ body {
 
 @media (min-width: 768px) {
   .tabs button i, .kategori button i {
-    font-size: 1.2rem; /* Icon lebih besar di desktop */
+    font-size: 1.2rem;
   }
 }
 
@@ -337,24 +337,24 @@ body {
 
 @media (min-width: 768px) {
   .movies-grid {
-    grid-template-columns: repeat(4, 1fr); /* DIUBAH: 4 kolom di desktop */
-    gap: 25px; /* Gap lebih besar */
-    padding: 30px; /* Padding lebih besar */
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+    padding: 30px;
   }
 }
 
 @media (min-width: 1024px) {
   .movies-grid {
-    grid-template-columns: repeat(4, 1fr); /* Tetap 4 kolom di layar lebih besar */
-    gap: 30px; /* Gap lebih besar */
-    padding: 35px; /* Padding lebih besar */
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+    padding: 35px;
   }
 }
 
 @media (min-width: 1200px) {
   .movies-grid {
-    grid-template-columns: repeat(4, 1fr); /* Tetap 4 kolom di layar sangat besar */
-    max-width: 1200px; /* Batasi lebar maksimal */
+    grid-template-columns: repeat(4, 1fr);
+    max-width: 1200px;
     gap: 35px;
   }
 }
@@ -471,7 +471,7 @@ body {
 
 @media (min-width: 768px) {
   .movie-info {
-    padding: var(--spacing-xl); /* Padding lebih besar di desktop */
+    padding: var(--spacing-xl);
   }
 }
 
@@ -490,7 +490,7 @@ body {
 
 @media (min-width: 768px) {
   .movie-title {
-    font-size: 1.2rem; /* Judul lebih besar di desktop */
+    font-size: 1.2rem;
     margin-bottom: var(--spacing-sm);
   }
 }
@@ -509,7 +509,7 @@ body {
 
 @media (min-width: 768px) {
   .movie-meta {
-    font-size: 1rem; /* Meta info lebih besar di desktop */
+    font-size: 1rem;
     gap: var(--spacing-md);
   }
 }
@@ -522,7 +522,7 @@ body {
 
 @media (min-width: 768px) {
   .movie-meta i {
-    font-size: 1rem; /* Icon meta lebih besar di desktop */
+    font-size: 1rem;
   }
 }
 
@@ -610,9 +610,9 @@ body {
 
 @media (min-width: 768px) {
   .pagination-btn {
-    padding: 1rem 2.5rem; /* Padding lebih besar di desktop */
-    font-size: 1.2rem; /* Font lebih besar di desktop */
-    min-width: 150px; /* Lebar minimum lebih besar */
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+    min-width: 150px;
     gap: var(--spacing-md);
   }
 }
@@ -637,7 +637,37 @@ body {
 
 @media (min-width: 768px) {
   .page-info {
-    font-size: 1.3rem; /* Page info lebih besar di desktop */
+    font-size: 1.3rem;
+  }
+}
+
+/* =====================================================
+   AD CONTAINER - Untuk Iklan
+   ===================================================== */
+.ad-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 20px auto;
+  min-height: 90px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  padding: 10px;
+}
+
+.ad-container ins {
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .ad-container {
+    min-height: 50px;
+    margin: 10px auto;
   }
 }
 
@@ -667,7 +697,7 @@ body {
 
 @media (min-width: 768px) {
   .scroll-top {
-    width: 60px; /* Lebih besar di desktop */
+    width: 60px;
     height: 60px;
     font-size: 1.6rem;
     bottom: 40px;

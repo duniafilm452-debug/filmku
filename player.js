@@ -1,5 +1,4 @@
-// player.js - Versi Rapi dengan Struktur Modular
-
+// player.js - Versi Final dengan Tampilan Episode untuk Semua Konten
 // =====================================================
 // KONFIGURASI
 // =====================================================
@@ -29,17 +28,22 @@ async function loadMovieData() {
     try {
         showLoading(true);
         
-        // Load movie details
+        // Load movie details dari tabel movies
         const { data: movie, error: movieError } = await supabaseClient
-            .from('movie_details')
+            .from('movies')
             .select('*')
             .eq('id', movieId)
             .single();
         
-        if (movieError) throw movieError;
+        if (movieError) {
+            console.error('Movie error:', movieError);
+            throw movieError;
+        }
+        
         if (!movie) throw new Error('Movie tidak ditemukan');
         
         currentMovie = movie;
+        console.log('Movie loaded:', movie);
         
         // Load episodes
         await loadEpisodes(movieId);
@@ -47,7 +51,7 @@ async function loadMovieData() {
         // Tampilkan data
         displayMovie(movie, episodes);
         
-        // Increment views (async, tidak perlu ditunggu)
+        // Increment views
         incrementViews(movie.id, movie.views || 0);
         
         // Load rekomendasi
@@ -98,7 +102,7 @@ async function loadEpisodes(movieId) {
 async function incrementViews(movieId, currentViews) {
     try {
         await supabaseClient
-            .from('movie_details')
+            .from('movies')
             .update({ views: currentViews + 1 })
             .eq('id', movieId);
     } catch (error) {
@@ -138,14 +142,13 @@ function displayMovie(movie, episodes) {
     displayEpisodes(episodes, movie);
 }
 
-// Helper function untuk set text content
 function setTextContent(id, text) {
     const el = document.getElementById(id);
     if (el) el.innerText = text;
 }
 
 // =====================================================
-// FUNGSI TAMPIL EPISODE
+// FUNGSI TAMPIL EPISODE - VERSI FINAL OPSI 1
 // =====================================================
 function displayEpisodes(episodes, movie) {
     const episodesList = document.getElementById('episodesList');
@@ -156,75 +159,112 @@ function displayEpisodes(episodes, movie) {
     
     episodesList.innerHTML = '';
     
-    if (movie.category === 'donghua') {
-        handleDonghuaEpisodes(episodes, movie, episodesList, episodesSection, videoPlayer);
-    } else {
-        handleFilmVideo(movie, episodes, episodesList, episodesSection, videoPlayer);
-    }
-}
-
-function handleDonghuaEpisodes(episodes, movie, episodesList, episodesSection, videoPlayer) {
-    if (episodes.length === 0) {
-        episodesList.innerHTML = `
-            <div class="error-episodes">
-                <i class="fas fa-exclamation-circle"></i> Tidak ada episode tersedia
-            </div>
-        `;
-        
-        if (movie.video_url) {
-            videoPlayer.src = movie.video_url;
+    console.log('Displaying episodes:', episodes.length, 'for category:', movie.category);
+    
+    // =============== JIKA ADA EPISODE ===============
+    if (episodes.length > 0) {
+        // Tampilkan section episode (untuk semua kategori)
+        if (episodesSection) {
+            episodesSection.style.display = 'block';
         }
-        return;
-    }
+        
+        // Tampilkan semua episode
+        episodes.forEach((ep, index) => {
+            const episodeCard = createEpisodeCard(ep, index);
+            episodesList.appendChild(episodeCard);
+        });
+        
+        // Tentukan video yang akan diputar pertama kali
+        if (movie.category === 'film' && movie.video_url) {
+            // Untuk film: putar video utama dari tabel movies
+            // Tapi tetap tampilkan episode sebagai opsi
+            console.log('Playing film video from movie.video_url:', movie.video_url);
+            videoPlayer.src = movie.video_url;
+            
+            // Tandai bahwa tidak ada episode yang aktif (karena yang diputar adalah video utama)
+            setTimeout(() => {
+                document.querySelectorAll('.episode-card').forEach(c => 
+                    c.classList.remove('active')
+                );
+            }, 100);
+        } else {
+            // Untuk donghua atau film tanpa video_url: putar episode pertama
+            console.log('Playing first episode:', episodes[0]?.url);
+            if (episodes[0]?.url) {
+                videoPlayer.src = episodes[0].url;
+                
+                // Tandai episode pertama sebagai aktif
+                setTimeout(() => {
+                    const firstCard = document.querySelector('.episode-card');
+                    if (firstCard) firstCard.classList.add('active');
+                }, 100);
+            }
+        }
+    } 
     
-    if (episodesSection) {
-        episodesSection.style.display = 'block';
-    }
-    
-    episodes.forEach((ep, index) => {
-        const episodeCard = createEpisodeCard(ep, index);
-        episodesList.appendChild(episodeCard);
-    });
-    
-    // Set video pertama
-    if (episodes[0]?.url) {
-        videoPlayer.src = episodes[0].url;
+    // =============== JIKA TIDAK ADA EPISODE ===============
+    else {
+        if (movie.category === 'donghua') {
+            // Donghua tanpa episode - tampilkan pesan error
+            if (episodesSection) {
+                episodesSection.style.display = 'block';
+            }
+            episodesList.innerHTML = `
+                <div class="error-episodes">
+                    <i class="fas fa-exclamation-circle"></i> Tidak ada episode tersedia
+                </div>
+            `;
+            
+            // Fallback ke video_url jika ada
+            if (movie.video_url) {
+                console.log('No episodes, playing movie.video_url:', movie.video_url);
+                videoPlayer.src = movie.video_url;
+            }
+        } else {
+            // Film tanpa episode
+            if (episodesSection) {
+                episodesSection.style.display = 'none';
+            }
+            
+            // Putar video_url jika ada
+            if (movie.video_url) {
+                console.log('Playing film video from movie.video_url:', movie.video_url);
+                videoPlayer.src = movie.video_url;
+            } else {
+                // Tidak ada video sama sekali
+                episodesList.innerHTML = `
+                    <div class="error-episodes">
+                        <i class="fas fa-exclamation-circle"></i> Video tidak tersedia
+                    </div>
+                `;
+            }
+        }
     }
 }
 
-function handleFilmVideo(movie, episodes, episodesList, episodesSection, videoPlayer) {
-    if (episodesSection) {
-        episodesSection.style.display = 'none';
-    }
-    
-    if (movie.video_url) {
-        videoPlayer.src = movie.video_url;
-    } else if (episodes.length > 0 && episodes[0]?.url) {
-        videoPlayer.src = episodes[0].url;
-    } else {
-        episodesList.innerHTML = `
-            <div class="error-episodes">
-                <i class="fas fa-exclamation-circle"></i> Video tidak tersedia
-            </div>
-        `;
-    }
-}
-
+// =====================================================
+// FUNGSI MEMBUAT EPISODE CARD
+// =====================================================
 function createEpisodeCard(episode, index) {
     const card = document.createElement('div');
-    card.className = `episode-card ${index === 0 ? 'active' : ''}`;
+    card.className = 'episode-card';
     card.setAttribute('data-episode-index', index);
     
     const episodeTitle = episode.title || `Episode ${episode.number || index + 1}`;
     card.innerHTML = `<span>${episodeTitle}</span>`;
     
     card.onclick = () => {
+        // Hapus class active dari semua episode
         document.querySelectorAll('.episode-card').forEach(c => 
             c.classList.remove('active')
         );
+        
+        // Tambahkan class active ke episode yang diklik
         card.classList.add('active');
         
+        // Putar video episode
         if (episode.url) {
+            console.log('Playing selected episode:', episode.url);
             document.getElementById('videoPlayer').src = episode.url;
         }
     };
@@ -238,7 +278,7 @@ function createEpisodeCard(episode, index) {
 async function loadRecommendations(category) {
     try {
         const { data, error } = await supabaseClient
-            .from('movie_details')
+            .from('movies')
             .select('*')
             .eq('category', category)
             .neq('id', movieId)
@@ -311,17 +351,19 @@ function setupVideoPlayer() {
     
     if (!videoPlayer || !loadingOverlay) return;
     
-    const videoEvents = {
-        loadstart: () => loadingOverlay.classList.remove('hidden'),
-        canplay: () => loadingOverlay.classList.add('hidden'),
-        error: () => {
-            loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat video';
-            loadingOverlay.classList.remove('hidden');
-        }
-    };
+    videoPlayer.addEventListener('loadstart', () => {
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat video...';
+    });
     
-    Object.entries(videoEvents).forEach(([event, handler]) => {
-        videoPlayer.addEventListener(event, handler);
+    videoPlayer.addEventListener('canplay', () => {
+        loadingOverlay.classList.add('hidden');
+    });
+    
+    videoPlayer.addEventListener('error', (e) => {
+        console.error('Video error:', e);
+        loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat video';
+        loadingOverlay.classList.remove('hidden');
     });
 }
 
@@ -362,17 +404,30 @@ const ShareFunctions = {
         const title = encodeURIComponent(document.getElementById('movieTitle')?.innerText || 'FilmKu');
         let shareUrl = '';
         
-        const platforms = {
-            whatsapp: `https://wa.me/?text=${title}%20-%20${url}`,
-            facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-            telegram: `https://t.me/share/url?url=${url}&text=${title}`
-        };
+        if (platform === 'whatsapp') {
+            shareUrl = `https://wa.me/?text=${title}%20-%20${url}`;
+        } else if (platform === 'facebook') {
+            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        } else if (platform === 'telegram') {
+            shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
+        }
         
-        if (platforms[platform]) {
-            window.open(platforms[platform], '_blank', 'width=600,height=400');
+        if (shareUrl) {
+            window.open(shareUrl, '_blank', 'width=600,height=400');
         }
     }
 };
+
+// Fungsi untuk inisialisasi iklan
+function initAds() {
+    try {
+        if (window.adsbygoogle) {
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        }
+    } catch (e) {
+        console.log('AdSense init error:', e);
+    }
+}
 
 // Expose functions to window
 window.openShareModal = ShareFunctions.openModal;
@@ -397,6 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
+    console.log('Loading movie with ID:', movieId);
     loadMovieData();
     setupVideoPlayer();
+    
+    // Inisialisasi iklan Google AdSense
+    setTimeout(initAds, 500);
 });

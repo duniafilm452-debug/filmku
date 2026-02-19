@@ -3,7 +3,7 @@
 const CONFIG = {
   SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o',
-  ITEMS_PER_PAGE: 20, // Diubah dari 50 menjadi 20
+  ITEMS_PER_PAGE: 20,
   DEBOUNCE_DELAY: 300
 };
 
@@ -70,6 +70,17 @@ const DOM = {
   }
 };
 
+// Fungsi untuk inisialisasi iklan
+function initAds() {
+  try {
+    if (window.adsbygoogle) {
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    }
+  } catch (e) {
+    console.log('AdSense init error:', e);
+  }
+}
+
 // UI Functions
 const UI = {
   // Create movie card HTML
@@ -108,6 +119,9 @@ const UI = {
           <i class="fas fa-film"></i>
           <p>Tidak ada film ditemukan</p>
         </div>`;
+      
+      // Inisialisasi iklan
+      setTimeout(initAds, 100);
       return;
     }
 
@@ -138,6 +152,9 @@ const UI = {
     if (State.currentPage > 1) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    
+    // Inisialisasi iklan setelah konten dimuat
+    setTimeout(initAds, 100);
   },
 
   // Update active tab styles
@@ -231,6 +248,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     State.movies = data || [];
     UI.renderMovies();
     
+    // Inisialisasi iklan pertama kali
+    setTimeout(initAds, 500);
+    
     // Setup search with debounce
     let searchTimeout;
     DOM.searchInput.addEventListener('input', (e) => {
@@ -260,5 +280,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         <p>Gagal memuat data: ${error.message}</p>
         <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #e50914; border: none; border-radius: 4px; color: white; cursor: pointer;">Refresh</button>
       </div>`;
+    
+    // Inisialisasi iklan meskipun error
+    setTimeout(initAds, 500);
   }
 });
