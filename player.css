@@ -1,6 +1,6 @@
 /* =====================================================
    player.css - FilmKu Player Styles
-   Version: 3.0 - Optimized for mobile & desktop
+   Version: 3.1 - Dengan IMA Ads Fix
    ===================================================== */
 
 :root {
@@ -38,6 +38,7 @@
   --z-modal: 1000;
   --z-toast: 1100;
   --z-overlay: 10;
+  --z-ima: 1000;
 }
 
 * {
@@ -126,6 +127,7 @@ body {
   height: 100%;
   border: none;
   background: #000;
+  object-fit: contain;
 }
 
 .loading-overlay {
@@ -157,6 +159,128 @@ body {
 
 .loading-overlay.hidden {
   display: none;
+}
+
+/* ========== IMA ADS FIXES ========== */
+.ima-ad-container {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: var(--z-ima) !important;
+  background: #000 !important;
+  overflow: hidden !important;
+}
+
+.ima-ad-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000 !important;
+}
+
+.ima-ad-container > div:first-child {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.ima-controls-div {
+  z-index: calc(var(--z-ima) + 1) !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent) !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.ima-countdown-div {
+  z-index: calc(var(--z-ima) + 1) !important;
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  color: white !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  padding: 5px 12px !important;
+  border-radius: 20px !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+}
+
+.ima-seek-bar-div {
+  z-index: calc(var(--z-ima) + 1) !important;
+  width: 100% !important;
+  margin: 5px 0 !important;
+}
+
+.ima-seek-bar-div input {
+  width: 100% !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: #555 !important;
+  cursor: pointer !important;
+}
+
+.ima-seek-bar-div input::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #e50914 !important;
+  cursor: pointer !important;
+}
+
+.ima-play-pause-div,
+.ima-mute-div,
+.ima-fullscreen-div {
+  z-index: calc(var(--z-ima) + 1) !important;
+  display: inline-block !important;
+  margin: 0 5px !important;
+}
+
+.ima-play-pause-div button,
+.ima-mute-div button,
+.ima-fullscreen-div button {
+  background: none !important;
+  border: none !important;
+  color: white !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  padding: 5px 10px !important;
+  border-radius: 4px !important;
+}
+
+.ima-play-pause-div button:hover,
+.ima-mute-div button:hover,
+.ima-fullscreen-div button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.ima-slider-div {
+  z-index: calc(var(--z-ima) + 1) !important;
+  display: inline-block !important;
+  width: 80px !important;
+  margin: 0 10px !important;
+  vertical-align: middle !important;
+}
+
+.ima-slider-div input {
+  width: 100% !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: #555 !important;
+  cursor: pointer !important;
+}
+
+.ima-slider-div input::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #e50914 !important;
+  cursor: pointer !important;
 }
 
 /* Info Section */

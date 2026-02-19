@@ -1,4 +1,4 @@
-// player.js - VERSI FINAL dengan IMA SDK Integration
+// player.js - VERSI FINAL dengan IMA SDK Integration FIX untuk iklan visual
 
 const CONFIG = {
     SUPABASE_URL: 'https://jsbqmtzkayvnpzmnycyv.supabase.co',
@@ -79,14 +79,25 @@ function requestAds(videoUrl) {
         // VAST tag URL - GANTI DENGAN VAST TAG ANDA
         adsRequest.adTagUrl = 'https://plumprush.com/damTFQz.dAGXNbvnZ/GPUo/zeImG9tueZOU/l_kIPNT/YZ4/MbTEMoxSNPj/kotuN/jag/xXMnzAE/3CMqyqZYsKatWI1/pNd/DA0Fxv';
         
-        // Specify the ad sizes
-        adsRequest.linearAdSlotWidth = 640;
-        adsRequest.linearAdSlotHeight = 360;
-        adsRequest.nonLinearAdSlotWidth = 640;
-        adsRequest.nonLinearAdSlotHeight = 150;
+        // PERBAIKAN: Set ukuran berdasarkan ukuran player sebenarnya
+        const playerWidth = imaVideoContent.offsetWidth || 640;
+        const playerHeight = imaVideoContent.offsetHeight || 360;
+        
+        adsRequest.linearAdSlotWidth = playerWidth;
+        adsRequest.linearAdSlotHeight = playerHeight;
+        adsRequest.nonLinearAdSlotWidth = playerWidth;
+        adsRequest.nonLinearAdSlotHeight = Math.floor(playerHeight / 3);
+        
+        // PERBAIKAN: Set force non-linear ads
+        adsRequest.forceNonLinearFullSlot = true;
+        
+        // PERBAIKAN: Set ad type
+        adsRequest.adType = google.ima.AdType.VIDEO;
         
         // Store video URL for later use
         pendingVideoUrl = videoUrl;
+        
+        console.log('Requesting ads for video:', videoUrl, 'with size:', playerWidth, 'x', playerHeight);
         
         // Request ads
         imaAdsLoader.requestAds(adsRequest);
@@ -102,6 +113,10 @@ function onAdsManagerLoaded(event) {
     try {
         const adsRenderingSettings = new google.ima.AdsRenderingSettings();
         adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
+        adsRenderingSettings.enablePreloading = true;
+        adsRenderingSettings.useStyledLinearAds = true;
+        adsRenderingSettings.useStyledNonLinearAds = true;
+        adsRenderingSettings.autoAlign = true;
         
         imaAdsManager = event.getAdsManager(
             imaVideoContent,
@@ -129,22 +144,51 @@ function onAdsManagerLoaded(event) {
             onAllAdsCompleted
         );
         
+        // PERBAIKAN: Tambahkan listener untuk ad started
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.STARTED,
+            onAdStarted
+        );
+        
+        // PERBAIKAN: Tambahkan listener untuk ad loaded
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.LOADED,
+            onAdLoaded
+        );
+        
+        // PERBAIKAN: Tambahkan listener untuk ad progress
+        imaAdsManager.addEventListener(
+            google.ima.AdEvent.Type.AD_PROGRESS,
+            onAdProgress
+        );
+        
         // Initialize ad container
         imaAdDisplayContainer.initialize();
         
         try {
+            // PERBAIKAN: Set ukuran berdasarkan kontainer
+            const videoWidth = imaVideoContent.offsetWidth || 640;
+            const videoHeight = imaVideoContent.offsetHeight || 360;
+            
+            console.log('Initializing ads manager with size:', videoWidth, 'x', videoHeight);
+            
             // Initialize ads manager
             imaAdsManager.init(
-                imaVideoContent.offsetWidth,
-                imaVideoContent.offsetHeight,
+                videoWidth,
+                videoHeight,
                 google.ima.ViewMode.NORMAL
             );
+            
+            // PERBAIKAN: Set volume
+            imaAdsManager.setVolume(1.0);
             
             // Start ads if we have a pending video
             if (pendingVideoUrl) {
                 // Set video source but don't play yet
                 imaVideoContent.src = pendingVideoUrl;
                 imaVideoContent.load();
+                
+                console.log('Starting ads...');
                 
                 // Start ads
                 imaAdsManager.start();
@@ -164,6 +208,15 @@ function onAdsManagerLoaded(event) {
 // Handle ad error
 function onAdError(event) {
     console.warn('Ad error:', event.getError());
+    
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.innerHTML = '<i class="fas fa-exclamation-circle"></i> Iklan gagal, memutar video...';
+        setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+        }, 2000);
+    }
+    
     // Resume content
     if (pendingVideoUrl) {
         playVideoDirectly(pendingVideoUrl);
@@ -172,7 +225,9 @@ function onAdError(event) {
 
 // Handle content pause (ad starting)
 function onContentPauseRequested() {
+    console.log('Content pause requested - ad starting');
     imaVideoContent.pause();
+    
     // Show loading overlay with ad indicator
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
@@ -183,6 +238,8 @@ function onContentPauseRequested() {
 
 // Handle content resume (ad finished)
 function onContentResumeRequested() {
+    console.log('Content resume requested - ad finished');
+    
     // Hide loading overlay
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
@@ -198,6 +255,60 @@ function onAllAdsCompleted() {
     console.log('All ads completed');
 }
 
+// PERBAIKAN: Handle ad started
+function onAdStarted(event) {
+    console.log('Ad started:', event);
+    
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.innerHTML = '<i class="fas fa-ad"></i> Iklan sedang diputar...';
+        loadingOverlay.style.display = 'flex';
+    }
+    
+    // PERBAIKAN: Pastikan ad container terlihat
+    setTimeout(() => {
+        const adContainer = document.querySelector('.ima-ad-container');
+        if (adContainer) {
+            adContainer.style.display = 'block';
+            adContainer.style.visibility = 'visible';
+            adContainer.style.opacity = '1';
+            adContainer.style.zIndex = '1000';
+        }
+    }, 100);
+}
+
+// PERBAIKAN: Handle ad loaded
+function onAdLoaded(event) {
+    console.log('Ad loaded:', event);
+    const ad = event.getAd();
+    if (ad) {
+        console.log('Ad info:', {
+            title: ad.getTitle(),
+            description: ad.getDescription(),
+            duration: ad.getDuration(),
+            width: ad.getWidth(),
+            height: ad.getHeight(),
+            isLinear: ad.isLinear()
+        });
+    }
+}
+
+// PERBAIKAN: Handle ad progress
+function onAdProgress(event) {
+    const adData = event.getAdData();
+    if (adData) {
+        const currentTime = adData.currentTime;
+        const duration = adData.duration;
+        if (duration > 0) {
+            const progress = Math.round((currentTime / duration) * 100);
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.innerHTML = `<i class="fas fa-ad"></i> Iklan: ${progress}%`;
+            }
+        }
+    }
+}
+
 // Play video directly without ads (fallback)
 function playVideoDirectly(url) {
     const videoPlayer = document.getElementById('videoPlayer');
@@ -205,9 +316,14 @@ function playVideoDirectly(url) {
     
     if (!videoPlayer) return;
     
+    console.log('Playing video directly (fallback):', url);
+    
     videoPlayer.src = url;
     videoPlayer.load();
-    videoPlayer.play();
+    videoPlayer.play().catch(e => {
+        console.warn('Autoplay failed:', e);
+        // Maybe show play button
+    });
     
     if (loadingOverlay) {
         loadingOverlay.style.display = 'none';
@@ -220,20 +336,32 @@ function playVideoDirectly(url) {
 function playVideoWithAds(url) {
     if (!url) return;
     
+    console.log('Playing video with ads:', url);
+    
     const loadingOverlay = document.querySelector('.loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.style.display = 'flex';
         loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyiapkan video...';
     }
     
+    // PERBAIKAN: Reset video player
+    const videoPlayer = document.getElementById('videoPlayer');
+    if (videoPlayer) {
+        videoPlayer.pause();
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+    }
+    
     // Check if IMA is available
-    if (typeof google !== 'undefined' && google.ima && !imaInitialized) {
-        initImaSDK();
-        setTimeout(() => requestAds(url), 500);
-    } else if (imaInitialized) {
-        requestAds(url);
+    if (typeof google !== 'undefined' && google.ima) {
+        if (!imaInitialized) {
+            initImaSDK();
+            setTimeout(() => requestAds(url), 1000);
+        } else {
+            requestAds(url);
+        }
     } else {
-        // Fallback: play without ads
+        console.warn('IMA SDK not available, playing directly');
         playVideoDirectly(url);
     }
 }
@@ -601,8 +729,8 @@ window.addEventListener('resize', () => {
     if (imaAdsManager && imaVideoContent) {
         try {
             imaAdsManager.resize(
-                imaVideoContent.offsetWidth,
-                imaVideoContent.offsetHeight,
+                imaVideoContent.offsetWidth || 640,
+                imaVideoContent.offsetHeight || 360,
                 google.ima.ViewMode.NORMAL
             );
         } catch (e) {
@@ -687,6 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 if (typeof google !== 'undefined' && google.ima) {
                     initImaSDK();
+                } else {
+                    console.error('IMA SDK failed to load');
                 }
             }, 1000);
         }
