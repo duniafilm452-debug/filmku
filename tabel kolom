@@ -1,0 +1,98 @@
+| table_name           | column_name         | data_type                |
+| -------------------- | ------------------- | ------------------------ |
+| activity_logs        | id                  | bigint                   |
+| activity_logs        | user_id             | uuid                     |
+| activity_logs        | movie_id            | bigint                   |
+| activity_logs        | action              | character varying        |
+| activity_logs        | details             | jsonb                    |
+| activity_logs        | ip_address          | inet                     |
+| activity_logs        | user_agent          | text                     |
+| activity_logs        | created_at          | timestamp with time zone |
+| comments             | id                  | bigint                   |
+| comments             | movie_id            | bigint                   |
+| comments             | username            | character varying        |
+| comments             | content             | text                     |
+| comments             | likes               | integer                  |
+| comments             | created_at          | timestamp with time zone |
+| comments             | updated_at          | timestamp with time zone |
+| comments             | visitor_id          | text                     |
+| comments             | ip_address          | inet                     |
+| comments             | user_agent          | text                     |
+| episodes             | id                  | bigint                   |
+| episodes             | movie_id            | bigint                   |
+| episodes             | episode_number      | integer                  |
+| episodes             | title               | character varying        |
+| episodes             | video_url           | text                     |
+| episodes             | duration            | integer                  |
+| episodes             | thumbnail           | text                     |
+| episodes             | views               | integer                  |
+| episodes             | created_at          | timestamp with time zone |
+| episodes             | updated_at          | timestamp with time zone |
+| favorites            | id                  | bigint                   |
+| favorites            | user_id             | uuid                     |
+| favorites            | movie_id            | bigint                   |
+| favorites            | created_at          | timestamp with time zone |
+| genres               | id                  | integer                  |
+| genres               | name                | character varying        |
+| movie_details        | id                  | bigint                   |
+| movie_details        | title               | character varying        |
+| movie_details        | category            | character varying        |
+| movie_details        | description         | text                     |
+| movie_details        | year                | integer                  |
+| movie_details        | thumbnail           | text                     |
+| movie_details        | video_url           | text                     |
+| movie_details        | episode_urls        | ARRAY                    |
+| movie_details        | episodes            | integer                  |
+| movie_details        | duration            | integer                  |
+| movie_details        | rating              | numeric                  |
+| movie_details        | views               | integer                  |
+| movie_details        | last_watched        | timestamp with time zone |
+| movie_details        | release_date        | timestamp with time zone |
+| movie_details        | created_at          | timestamp with time zone |
+| movie_details        | updated_at          | timestamp with time zone |
+| movie_details        | total_episodes      | bigint                   |
+| movie_details        | total_episode_views | bigint                   |
+| movie_genres         | movie_id            | bigint                   |
+| movie_genres         | genre_id            | integer                  |
+| movies               | id                  | bigint                   |
+| movies               | title               | character varying        |
+| movies               | category            | character varying        |
+| movies               | description         | text                     |
+| movies               | year                | integer                  |
+| movies               | thumbnail           | text                     |
+| movies               | video_url           | text                     |
+| movies               | episode_urls        | ARRAY                    |
+| movies               | episodes            | integer                  |
+| movies               | duration            | integer                  |
+| movies               | rating              | numeric                  |
+| movies               | views               | integer                  |
+| movies               | last_watched        | timestamp with time zone |
+| movies               | release_date        | timestamp with time zone |
+| movies               | created_at          | timestamp with time zone |
+| movies               | updated_at          | timestamp with time zone |
+| movies               | type                | character varying        |
+| popular_movies_7days | id                  | bigint                   |
+| popular_movies_7days | title               | character varying        |
+| popular_movies_7days | category            | character varying        |
+| popular_movies_7days | description         | text                     |
+| popular_movies_7days | year                | integer                  |
+| popular_movies_7days | thumbnail           | text                     |
+| popular_movies_7days | video_url           | text                     |
+| popular_movies_7days | episode_urls        | ARRAY                    |
+| popular_movies_7days | episodes            | integer                  |
+| popular_movies_7days | duration            | integer                  |
+| popular_movies_7days | rating              | numeric                  |
+| popular_movies_7days | views               | integer                  |
+| popular_movies_7days | last_watched        | timestamp with time zone |
+| popular_movies_7days | release_date        | timestamp with time zone |
+| popular_movies_7days | created_at          | timestamp with time zone |
+| popular_movies_7days | updated_at          | timestamp with time zone |
+| popular_movies_7days | views_last_7_days   | bigint                   |
+| watch_history        | id                  | bigint                   |
+| watch_history        | user_id             | uuid                     |
+| watch_history        | movie_id            | bigint                   |
+| watch_history        | episode_id          | bigint                   |
+| watch_history        | episode_number      | integer                  |
+| watch_history        | progress            | integer                  |
+| watch_history        | completed           | boolean                  |
+| watch_history        | watched_at          | timestamp with time zone |
