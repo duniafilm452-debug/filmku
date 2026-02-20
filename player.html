@@ -2,71 +2,78 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-  <meta name="description" content="Nonton streaming film dan donghua subtitle Indonesia gratis. Player dengan kualitas terbaik." />
-  <meta name="keywords" content="nonton film, streaming film, donghua subtitle indonesia, player film" />
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Nonton streaming film dan donghua subtitle Indonesia gratis." />
+
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" />
-  
+
   <title>FilmKu - Nonton Film & Donghua</title>
-  
+
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5749642695540472" crossorigin="anonymous"></script>
-  
-  <!-- IMA SDK -->
-  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-  
-  <!-- CSS Files -->
+
+  <!-- IMA SDK untuk iklan video -->
+  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" onerror="window.imaLoadFailed=true"></script>
+
+  <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="player.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-  
-  <!-- Preconnect untuk performa -->
+
+  <!-- Preconnect -->
   <link rel="preconnect" href="https://jsbqmtzkayvnpzmnycyv.supabase.co" />
 </head>
 <body>
 
 <!-- HEADER -->
 <header class="site-header">
-  <div class="container header-content">
-    <div class="logo-container" onclick="window.location.href='index.html'" style="cursor: pointer;">
-      <img src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" alt="FilmKu Logo" class="logo-img" loading="eager">
+  <div class="header-content">
+    <div class="logo-container" onclick="window.location.href='index.html'" style="cursor:pointer;" role="link" aria-label="Kembali ke halaman utama">
+      <img src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" alt="FilmKu Logo" class="logo-img" loading="eager" onerror="this.style.display='none'">
       <span class="logo">FilmKu</span>
     </div>
+    <a href="index.html" class="back-btn" aria-label="Kembali">
+      <i class="fas fa-arrow-left"></i> <span>Kembali</span>
+    </a>
   </div>
 </header>
 
-<!-- MAIN PLAYER CONTENT -->
-<main class="player-container">
-  
-  <!-- VIDEO PLAYER SECTION -->
-  <section class="video-section">
+<!-- MAIN CONTENT -->
+<main class="player-container" id="mainContent">
+
+  <!-- VIDEO PLAYER -->
+  <section class="video-section" aria-label="Video player">
     <div id="videoWrapper" class="video-wrapper">
-      <div class="loading-overlay">
-        <i class="fas fa-spinner fa-spin"></i> Memuat video...
+      <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" style="display:none;">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+        <span>Memuat video...</span>
       </div>
-      <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" playsinline webkit-playsinline>
-        <p class="vjs-no-js">Browser Anda tidak mendukung video.</p>
+      <video id="videoPlayer"
+             controls
+             preload="metadata"
+             playsinline
+             webkit-playsinline
+             aria-label="Video player">
+        <p>Browser Anda tidak mendukung pemutar video HTML5.</p>
       </video>
     </div>
   </section>
 
-  <!-- INFO SECTION -->
-  <section class="info-section">
+  <!-- INFO FILM -->
+  <section class="info-section" aria-label="Informasi film">
     <div class="movie-header">
       <h1 id="movieTitle" class="main-title">Memuat judul...</h1>
-      <div class="action-buttons">
-        <button class="btn-share" onclick="openShareModal()" aria-label="Bagikan">
-          <i class="fas fa-share-alt"></i> <span>Bagikan</span>
-        </button>
-      </div>
+      <button class="btn-share" onclick="openShareModal()" aria-label="Bagikan film ini">
+        <i class="fas fa-share-alt" aria-hidden="true"></i> <span>Bagikan</span>
+      </button>
     </div>
 
     <div class="movie-stats">
-      <span id="movieCategory" class="badge">-</span>
-      <span><i class="fas fa-eye"></i> <span id="movieViews">0</span> Views</span>
-      <span id="movieDate"><i class="fas fa-calendar-alt"></i> -</span>
+      <span id="movieCategory" class="badge film">-</span>
+      <span><i class="fas fa-eye" aria-hidden="true"></i> <span id="movieViews">0</span> Views</span>
+      <span id="movieDate"><i class="fas fa-calendar-alt" aria-hidden="true"></i> -</span>
+      <span id="movieRating" style="display:none;"><i class="fas fa-star" aria-hidden="true" style="color:#f59e0b;"></i> <span id="movieRatingValue">-</span></span>
     </div>
 
     <div class="movie-description">
@@ -74,99 +81,77 @@
     </div>
   </section>
 
-  <!-- IKLAN 350×50 -->
+  <!-- IKLAN -->
   <div class="ad-row">
     <div class="ad-container ad-350x50">
       <ins class="adsbygoogle"
            style="display:inline-block;width:350px;height:50px"
            data-ad-client="ca-pub-5749642695540472"
-           data-ad-slot="1234567890"></ins>
+           data-ad-slot="GANTI_SLOT_ID_ANDA"></ins>
       <script>
-           (adsbygoogle = window.adsbygoogle || []).push({});
+        try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e) {}
       </script>
     </div>
   </div>
 
-  <!-- EPISODES SECTION -->
-  <section class="episodes-section" id="episodesSection">
+  <!-- DAFTAR EPISODE -->
+  <section class="episodes-section" id="episodesSection" aria-label="Daftar episode" style="display:none;">
     <h2 class="section-title">Daftar Episode</h2>
     <div id="episodesList" class="episodes-list">
-      <div class="loading-episodes">
-        <i class="fas fa-spinner fa-spin"></i> Memuat episode...
+      <div class="loading-episodes" role="status">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Memuat episode...
       </div>
     </div>
   </section>
 
-  <!-- RECOMMENDATIONS SECTION -->
-  <section class="recommendations-section">
+  <!-- REKOMENDASI -->
+  <section class="recommendations-section" aria-label="Rekomendasi film serupa">
     <h2 class="section-title">Rekomendasi Serupa</h2>
     <div id="recommendationsList" class="recommendations-grid">
-      <div class="loading-state">
-        <i class="fas fa-spinner fa-spin"></i> Memuat rekomendasi...
+      <div class="loading-state" role="status">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+        <p>Memuat rekomendasi...</p>
       </div>
     </div>
   </section>
-  
+
 </main>
 
-<!-- SHARE MODAL -->
-<div class="modal" id="shareModal">
+<!-- MODAL SHARE -->
+<div class="modal" id="shareModal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
   <div class="modal-content">
     <div class="modal-header">
-      <h3>Bagikan Film</h3>
-      <button class="close-modal" onclick="closeModal()" aria-label="Tutup">
-        <i class="fas fa-times"></i>
+      <h3 id="shareModalTitle">Bagikan Film</h3>
+      <button class="close-modal" onclick="closeModal()" aria-label="Tutup modal">
+        <i class="fas fa-times" aria-hidden="true"></i>
       </button>
     </div>
     <div class="share-options">
       <button onclick="shareVia('whatsapp')" aria-label="Bagikan ke WhatsApp">
-        <i class="fab fa-whatsapp"></i>
+        <i class="fab fa-whatsapp" aria-hidden="true"></i>
       </button>
       <button onclick="shareVia('facebook')" aria-label="Bagikan ke Facebook">
-        <i class="fab fa-facebook"></i>
+        <i class="fab fa-facebook" aria-hidden="true"></i>
       </button>
       <button onclick="shareVia('telegram')" aria-label="Bagikan ke Telegram">
-        <i class="fab fa-telegram"></i>
+        <i class="fab fa-telegram" aria-hidden="true"></i>
       </button>
     </div>
     <div class="copy-link">
-      <input type="text" id="shareLink" readonly aria-label="Link film">
+      <input type="text" id="shareLink" readonly aria-label="Link film" />
       <button onclick="copyShareLink()">Salin</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST NOTIFICATION -->
-<div id="toast" class="toast">Link disalin!</div>
+<!-- TOAST NOTIFIKASI -->
+<div id="toast" class="toast" role="status" aria-live="polite">Link disalin!</div>
 
-<!-- SUPABASE JS -->
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- PLAYER SCRIPT -->
 <script src="player.js"></script>
-
-<!-- ADDITIONAL AD SCRIPT -->
-<script>
-  (function() {
-    function initPlayerAds() {
-      try {
-        if (window.adsbygoogle) {
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        }
-      } catch (e) {}
-    }
-    
-    if (document.readyState === 'complete') {
-      setTimeout(initPlayerAds, 500);
-      setTimeout(initPlayerAds, 1500);
-    } else {
-      window.addEventListener('load', function() {
-        setTimeout(initPlayerAds, 500);
-        setTimeout(initPlayerAds, 1500);
-      });
-    }
-  })();
-</script>
 
 </body>
 </html>

@@ -6,22 +6,22 @@
   <meta name="description" content="Nonton film dan donghua terbaru dengan subtitle Indonesia. Streaming gratis tanpa login." />
   <meta name="keywords" content="nonton film, streaming film, donghua subtitle indonesia, film gratis, bioskop online" />
   <meta name="author" content="FilmKu" />
-  
+
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" />
-  
+
   <title>FilmKu - Nonton Film & Donghua Terbaru Subtitle Indonesia</title>
 
   <!-- VERIFIKASI HILLTOPADS -->
   <meta name="ab7a79ebbce994bfcb0ad58958f91d2f7904f996" content="ab7a79ebbce994bfcb0ad58958f91d2f7904f996" />
-  
+
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5749642695540472" crossorigin="anonymous"></script>
-  
+
   <!-- CSS Files -->
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-  
+
   <!-- Preconnect untuk performa lebih baik -->
   <link rel="preconnect" href="https://jsbqmtzkayvnpzmnycyv.supabase.co" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
@@ -31,64 +31,19 @@
 <!-- HEADER SECTION -->
 <header class="site-header">
   <div class="logo-container">
-    <img src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" alt="FilmKu Logo" class="logo-img" width="40" height="40" loading="eager">
+    <img src="https://thudong.jelajahifilm.my.id/IMG_20260215_012942.png" alt="FilmKu Logo" class="logo-img" width="40" height="40" loading="eager" onerror="this.style.display='none'">
     <h1 class="logo">FilmKu</h1>
   </div>
-  
+
   <div class="search-wrapper">
     <i class="fas fa-search search-icon"></i>
-    <input type="text" id="searchInput" placeholder="Cari film atau donghua..." aria-label="Cari film" />
+    <input type="text" id="searchInput" placeholder="Cari film atau donghua..." aria-label="Cari film" autocomplete="off" />
   </div>
 </header>
 
-<!-- IKLAN HEADER (350×50) -->
+<!-- IKLAN HEADER - Hanya 1 slot agar tidak melanggar kebijakan iklan -->
 <div class="ad-row ad-row-header">
-  <div class="ad-container ad-header ad-350x50">
-    <script>
-      atOptions = {
-        'key' : 'b82bb041ac360a08b1a28827ad43e38e',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 350,
-        'params' : {}
-      };
-    </script>
-    <script src="https://www.highperformanceformat.com/b82bb041ac360a08b1a28827ad43e38e/invoke.js"></script>
-  </div>
-</div>
-
-<div class="ad-row ad-row-header">
-  <div class="ad-container ad-header ad-350x50">
-    <script>
-      atOptions = {
-        'key' : 'b82bb041ac360a08b1a28827ad43e38e',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 350,
-        'params' : {}
-      };
-    </script>
-    <script src="https://www.highperformanceformat.com/b82bb041ac360a08b1a28827ad43e38e/invoke.js"></script>
-  </div>
-</div>
-
-<div class="ad-row ad-row-header">
-  <div class="ad-container ad-header ad-350x50">
-    <script>
-      atOptions = {
-        'key' : 'b82bb041ac360a08b1a28827ad43e38e',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 350,
-        'params' : {}
-      };
-    </script>
-    <script src="https://www.highperformanceformat.com/b82bb041ac360a08b1a28827ad43e38e/invoke.js"></script>
-  </div>
-</div>
-
-<div class="ad-row ad-row-header">
-  <div class="ad-container ad-header ad-350x50">
+  <div class="ad-container ad-350x50">
     <script>
       atOptions = {
         'key' : 'b82bb041ac360a08b1a28827ad43e38e',
@@ -103,7 +58,7 @@
 </div>
 
 <!-- NAVIGATION TABS -->
-<nav class="tabs">
+<nav class="tabs" role="navigation" aria-label="Navigasi konten">
   <button onclick="loadTab('rekomendasi')" class="active" id="tabRekomendasi" aria-label="Rekomendasi">
     <i class="fas fa-random"></i><span>Rekomendasi</span>
   </button>
@@ -115,68 +70,37 @@
   </button>
 </nav>
 
-<!-- IKLAN DI BAWAH TABS (350×50) -->
-<div class="ad-row">
-  <div class="ad-container ad-below-tabs ad-350x50">
-    <script>
-      atOptions = {
-        'key' : 'b82bb041ac360a08b1a28827ad43e38e',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 350,
-        'params' : {}
-      };
-    </script>
-    <script src="https://www.highperformanceformat.com/b82bb041ac360a08b1a28827ad43e38e/invoke.js"></script>
-  </div>
-</div>
-
 <!-- CATEGORY FILTERS -->
-<section class="kategori">
+<section class="kategori" aria-label="Filter kategori">
   <button onclick="filterCategory('all')" class="active" id="catAll">Semua</button>
   <button onclick="filterCategory('film')" id="catFilm">Film</button>
   <button onclick="filterCategory('donghua')" id="catDonghua">Donghua</button>
 </section>
 
+<!-- IKLAN DI BAWAH KATEGORI -->
+<div class="ad-row">
+  <div class="ad-container ad-350x50">
+    <ins class="adsbygoogle"
+         style="display:inline-block;width:350px;height:50px"
+         data-ad-client="ca-pub-5749642695540472"
+         data-ad-slot="GANTI_SLOT_ID_ANDA"></ins>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+</div>
+
 <!-- MAIN MOVIES GRID -->
-<main id="moviesList" class="movies-grid">
+<main id="moviesList" class="movies-grid" role="main" aria-label="Daftar film">
   <div class="loading-state">
     <i class="fas fa-spinner fa-spin"></i>
     <p>Memuat data...</p>
   </div>
 </main>
 
-<!-- IKLAN TENGAH - ADSENSE -->
+<!-- IKLAN TENGAH -->
 <div class="ad-row">
   <div class="ad-container ad-350x50">
-    <ins class="adsbygoogle"
-         style="display:inline-block;width:350px;height:50px"
-         data-ad-client="ca-pub-5749642695540472"
-         data-ad-slot="1234567890"></ins>
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </div>
-</div>
-
-<!-- IKLAN TENGAH - HIGHPERFORMANCE -->
-<div class="ad-row">
-  <div class="ad-container ad-350x50">
-    <script>
-      atOptions = {
-        'key' : 'b82bb041ac360a08b1a28827ad43e38e',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 350,
-        'params' : {}
-      };
-    </script>
-    <script src="https://www.highperformanceformat.com/b82bb041ac360a08b1a28827ad43e38e/invoke.js"></script>
-  </div>
-</div>
-
-<div class="ad-row ad-row-header">
-  <div class="ad-container ad-header ad-350x50">
     <script>
       atOptions = {
         'key' : 'b82bb041ac360a08b1a28827ad43e38e',
@@ -195,36 +119,29 @@
   <i class="fas fa-arrow-up"></i>
 </button>
 
+<!-- VIDEO SLIDER ADVERTISEMENT -->
+<div class="ad-row ad-video-slider">
+  <div class="ad-container ad-video-container">
+    <script>
+    (function(fed){
+    var d = document,
+        s = d.createElement('script'),
+        l = d.scripts[d.scripts.length - 1];
+    s.settings = fed || {};
+    s.src = "\/\/mistymeat.com\/bmX.VFsQd\/Gnl\/0\/YTW\/cn\/pe\/m\/9-usZpUrlmk\/PCTeYE4JMVTPMW0DMtj\/EUt\/NBjKg\/x-MXzEQqykNiQC";
+    s.async = true;
+    s.referrerPolicy = 'no-referrer-when-downgrade';
+    l.parentNode.insertBefore(s, l);
+    })({})
+    </script>
+  </div>
+</div>
+
 <!-- SUPABASE JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- MAIN SCRIPT -->
 <script src="script.js"></script>
-
-<!-- ADDITIONAL AD INIT SCRIPT -->
-<script>
-  (function() {
-    function initAllAds() {
-      try {
-        if (window.adsbygoogle) {
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        }
-      } catch (e) {
-        console.log('Ad init info:', e);
-      }
-    }
-    
-    if (document.readyState === 'complete') {
-      setTimeout(initAllAds, 500);
-      setTimeout(initAllAds, 1500);
-    } else {
-      window.addEventListener('load', function() {
-        setTimeout(initAllAds, 500);
-        setTimeout(initAllAds, 1500);
-      });
-    }
-  })();
-</script>
 
 </body>
 </html>
