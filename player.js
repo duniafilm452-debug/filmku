@@ -137,11 +137,15 @@ function toEmbedUrl(url) {
 async function incrementViews(id, currentViews) {
   if (!supabaseClient || !id) return;
   try {
+    const newViews = (currentViews || 0) + 1;
     await supabaseClient
       .from('movie_details')
-      .update({ views: (currentViews || 0) + 1 })
+      .update({ views: newViews })
       .eq('id', id);
-    console.log('Views berhasil diupdate');
+    console.log('Views berhasil diupdate ke:', newViews);
+    // Update tampilan angka views di halaman
+    const viewsEl = document.getElementById('movieViews');
+    if (viewsEl) viewsEl.textContent = formatNumber(newViews);
   } catch (err) {
     console.warn('Gagal update views:', err.message);
   }
@@ -501,11 +505,16 @@ function onAdsManagerLoaded(event) {
 
 function onAdStarted(event) {
   console.log('IMA: Ad started - iklan mulai diputar');
-  showLoading(false); // Pastikan loading hilang saat iklan mulai
+  // Sembunyikan loading overlay dan set z-index lebih rendah dari container iklan
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.style.zIndex = '1'; // Paksa di bawah IMA container (z-index 20)
+  }
   
   // Pastikan container iklan terlihat
   const wrapper = document.getElementById('videoWrapper');
-  const adContainer = wrapper.querySelector('.ima-ad-container');
+  const adContainer = wrapper ? wrapper.querySelector('.ima-ad-container') : null;
   if (adContainer) {
     adContainer.style.zIndex = '20';
     adContainer.style.display = 'block';
@@ -550,12 +559,21 @@ function onContentPauseRequested() {
   console.log('IMA: Content paused requested - iklan akan diputar');
   if (imaVideoContent) imaVideoContent.pause();
   
-  // JANGAN tampilkan loading overlay
-  showLoading(false); // Pastikan loading hilang
+  // Sembunyikan loading overlay dan turunkan z-index agar tidak menutupi iklan
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.style.zIndex = '1';
+  }
 }
 
 function onContentResumeRequested() {
   console.log('IMA: Content resume requested - iklan selesai');
+  // Pulihkan z-index overlay ke nilai normal
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.zIndex = '';
+  }
   showLoading(false);
   if (imaVideoContent) {
     imaVideoContent.play().catch(e => console.info('Resume play diblokir:', e.message));
