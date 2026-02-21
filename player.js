@@ -1,4 +1,4 @@
-// player.js - FilmKu v7.2 - Perbaikan IMA SDK VAST Ad Display
+// player.js - FilmKu v7.3 - IMA SDK + Custom Skip Button Countdown
 
 // ==================== KONFIGURASI ====================
 const CONFIG = {
@@ -40,6 +40,12 @@ let imaAdContainerEl = null;       // Elemen <div id="adContainer">
 let imaInitialized = false;        // Apakah IMA sudah diinit
 let imaContainerInitialized = false; // ✅ Apakah AdDisplayContainer.initialize() sudah dipanggil
 let pendingVideoUrl = null;        // URL video yang menunggu iklan selesai
+
+// ==================== SKIP BUTTON STATE ====================
+let skipButtonEl = null;           // Elemen tombol skip custom
+let skipCountdownInterval = null;  // Interval countdown skip
+let skipOffsetSeconds = 5;         // Detik sebelum bisa diskip (default 5, diupdate dari IMA)
+let adDurationSeconds = 0;         // Total durasi iklan
 
 // ==================== HELPERS ====================
 function escapeHtml(str) {
@@ -680,6 +686,112 @@ function onAdsManagerLoaded(event) {
   }
 }
 
+// ==================== SKIP BUTTON FUNCTIONS ====================
+
+/**
+ * Buat elemen tombol skip custom dan sisipkan ke dalam adContainer.
+ * IMA SDK memiliki skip button sendiri, tapi kita buat custom agar
+ * UI lebih konsisten dan menampilkan countdown yang jelas.
+ */
+function createSkipButton() {
+  // Hapus tombol skip lama jika ada
+  removeSkipButton();
+
+  const btn = document.createElement('div');
+  btn.id = 'customSkipBtn';
+  btn.className = 'skip-btn skip-btn--waiting';
+  btn.innerHTML = `
+    <span class="skip-countdown-text">Iklan dapat diskip dalam <strong id="skipCountdownNum">5</strong> detik</span>
+    <span class="skip-ready-text" style="display:none;">Lewati Iklan <span class="skip-arrow">&#9654;</span></span>
+  `;
+
+  // Klik hanya aktif saat sudah bisa diskip
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('skip-btn--ready')) {
+      console.log('User menekan tombol skip iklan');
+      if (imaAdsManager) {
+        try { imaAdsManager.skip(); } catch (e) {
+          console.warn('IMA skip gagal, skip manual:', e);
+          hideAdAndPlayContent();
+        }
+      } else {
+        hideAdAndPlayContent();
+      }
+    }
+  });
+
+  // Sisipkan ke videoWrapper (di luar adContainer agar tidak tertimpa IMA)
+  const wrapper = document.getElementById('videoWrapper');
+  if (wrapper) {
+    wrapper.appendChild(btn);
+    skipButtonEl = btn;
+    console.log('Skip button dibuat');
+  }
+}
+
+function removeSkipButton() {
+  if (skipCountdownInterval) {
+    clearInterval(skipCountdownInterval);
+    skipCountdownInterval = null;
+  }
+  if (skipButtonEl) {
+    skipButtonEl.remove();
+    skipButtonEl = null;
+  }
+  // Hapus juga jika ada sisa elemen lama
+  const old = document.getElementById('customSkipBtn');
+  if (old) old.remove();
+}
+
+/**
+ * Mulai countdown skip.
+ * @param {number} skipOffset - detik sebelum bisa diskip
+ */
+function startSkipCountdown(skipOffset) {
+  if (!skipButtonEl) return;
+
+  let remaining = Math.ceil(skipOffset);
+  const countdownNum = skipButtonEl.querySelector('#skipCountdownNum');
+  if (countdownNum) countdownNum.textContent = remaining;
+
+  // Jika skipOffset 0 atau negatif, langsung tampilkan tombol skip
+  if (remaining <= 0) {
+    setSkipButtonReady();
+    return;
+  }
+
+  skipCountdownInterval = setInterval(() => {
+    remaining--;
+    if (countdownNum) countdownNum.textContent = remaining;
+
+    if (remaining <= 0) {
+      clearInterval(skipCountdownInterval);
+      skipCountdownInterval = null;
+      setSkipButtonReady();
+    }
+  }, 1000);
+}
+
+function setSkipButtonReady() {
+  if (!skipButtonEl) return;
+  skipButtonEl.classList.remove('skip-btn--waiting');
+  skipButtonEl.classList.add('skip-btn--ready');
+
+  const countdownText = skipButtonEl.querySelector('.skip-countdown-text');
+  const readyText = skipButtonEl.querySelector('.skip-ready-text');
+  if (countdownText) countdownText.style.display = 'none';
+  if (readyText) readyText.style.display = 'inline-flex';
+  console.log('Skip button: siap diskip ✅');
+}
+
+function hideAdAndPlayContent() {
+  removeSkipButton();
+  if (imaAdContainerEl) imaAdContainerEl.style.display = 'none';
+  if (imaVideoContent) {
+    imaVideoContent.play().catch(e => console.info('Resume play diblokir:', e.message));
+  }
+}
+
 // ==================== EVENT HANDLER IKLAN ====================
 
 function onAdStarted(event) {
@@ -692,38 +804,61 @@ function onAdStarted(event) {
     imaAdContainerEl.style.zIndex = '20';
   }
 
-  // Sembunyikan loading overlay agar tidak menutupi iklan
+  // Sembunyikan loading overlay
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) overlay.style.display = 'none';
+
+  // ✅ Buat skip button dengan countdown
+  // Ambil skipTimeOffset dari IMA jika tersedia
+  let skipOffset = skipOffsetSeconds; // default 5 detik
+  try {
+    const ad = event.getAd();
+    if (ad && typeof ad.getSkipTimeOffset === 'function') {
+      const offset = ad.getSkipTimeOffset();
+      if (offset >= 0) {
+        skipOffset = offset;
+        skipOffsetSeconds = offset;
+        console.log('Skip offset dari IMA:', skipOffset, 'detik');
+      }
+      const dur = ad.getDuration();
+      if (dur > 0) adDurationSeconds = dur;
+    }
+  } catch (e) {
+    console.warn('Tidak bisa baca skip offset dari IMA, pakai default:', skipOffset);
+  }
+
+  createSkipButton();
+  startSkipCountdown(skipOffset);
 }
 
 function onAdProgress(event) {
-  console.log('IMA: Progress iklan -', event.type);
+  // Tidak perlu log setiap frame
 }
 
 function onAdComplete(event) {
   console.log('IMA: Iklan selesai diputar');
+  removeSkipButton();
 }
 
 function onAdSkipped(event) {
   console.log('IMA: Iklan di-skip');
+  removeSkipButton();
 }
 
 function onAdError(event) {
   const errMsg = event.getError ? event.getError().toString() : 'Unknown ad error';
   console.warn('IMA Ad error:', errMsg);
 
+  removeSkipButton();
+
   if (imaAdsManager) {
     try { imaAdsManager.destroy(); } catch (e) {}
     imaAdsManager = null;
   }
 
-  // Sembunyikan adContainer saat error
   if (imaAdContainerEl) imaAdContainerEl.style.display = 'none';
-
   showLoading(false);
 
-  // Fallback: langsung putar video tanpa iklan
   if (pendingVideoUrl) {
     const url = pendingVideoUrl;
     pendingVideoUrl = null;
@@ -733,11 +868,8 @@ function onAdError(event) {
 
 function onContentPauseRequested() {
   console.log('IMA: Video dijeda untuk iklan');
-  if (imaVideoContent) {
-    imaVideoContent.pause();
-  }
+  if (imaVideoContent) imaVideoContent.pause();
 
-  // Sembunyikan loading, tampilkan adContainer
   showLoading(false);
   if (imaAdContainerEl) {
     imaAdContainerEl.style.display = 'block';
@@ -748,11 +880,9 @@ function onContentPauseRequested() {
 function onContentResumeRequested() {
   console.log('IMA: Iklan selesai, melanjutkan video konten');
 
-  // Sembunyikan adContainer setelah iklan selesai
-  if (imaAdContainerEl) {
-    imaAdContainerEl.style.display = 'none';
-  }
+  removeSkipButton();
 
+  if (imaAdContainerEl) imaAdContainerEl.style.display = 'none';
   showLoading(false);
 
   if (imaVideoContent) {
@@ -763,6 +893,7 @@ function onContentResumeRequested() {
 function onAllAdsCompleted() {
   console.log('IMA: Semua iklan selesai');
 
+  removeSkipButton();
   if (imaAdContainerEl) imaAdContainerEl.style.display = 'none';
   showLoading(false);
   pendingVideoUrl = null;

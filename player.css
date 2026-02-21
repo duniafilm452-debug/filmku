@@ -645,3 +645,118 @@ body {
   .movie-stats { padding: 8px 12px; gap: 10px; }
   .movie-stats span { font-size: 12px; }
 }
+
+/* ==================== ✅ CUSTOM SKIP BUTTON ==================== */
+
+/*
+ * Tombol skip diletakkan di dalam #videoWrapper (di luar #adContainer)
+ * agar tidak tertimpa oleh layer IMA SDK.
+ * z-index harus lebih tinggi dari #adContainer (20) agar tetap terlihat.
+ */
+#customSkipBtn {
+  position: absolute;
+  bottom: 20px;
+  right: 16px;
+  z-index: 30; /* Di atas adContainer (z-index: 20) */
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  cursor: default;
+  user-select: none;
+  animation: skipFadeIn 0.4s ease forwards;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+
+@keyframes skipFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Saat masih menunggu (countdown) */
+.skip-btn--waiting {
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 8px 14px;
+  color: #ccc;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  cursor: not-allowed;
+}
+
+.skip-btn--waiting .skip-countdown-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.skip-btn--waiting strong {
+  color: #fff;
+  font-size: 15px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Saat sudah bisa diskip */
+.skip-btn--ready {
+  cursor: pointer;
+  background: rgba(20, 20, 20, 0.88);
+  border: 1.5px solid rgba(255,255,255,0.5);
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.skip-btn--ready:hover {
+  background: rgba(229, 9, 20, 0.9);
+  border-color: #e50914;
+  transform: scale(1.04);
+}
+
+.skip-ready-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+.skip-arrow {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* Animasi pulse saat tombol skip muncul (siap diklik) */
+.skip-btn--ready {
+  animation: skipPulse 0.35s ease;
+}
+
+@keyframes skipPulse {
+  0%   { transform: scale(0.92); opacity: 0; }
+  60%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* Responsive: posisi lebih kecil di mobile */
+@media (max-width: 480px) {
+  #customSkipBtn {
+    bottom: 12px;
+    right: 10px;
+  }
+
+  .skip-btn--waiting {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .skip-ready-text {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+}
