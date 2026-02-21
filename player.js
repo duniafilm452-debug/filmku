@@ -705,27 +705,60 @@ function createSkipButton() {
     <span class="skip-ready-text" style="display:none;">Lewati Iklan <span class="skip-arrow">&#9654;</span></span>
   `;
 
-  // Klik hanya aktif saat sudah bisa diskip
+  // ✅ PERBAIKAN: Sisipkan langsung ke <body> sebagai overlay fixed
+  // Ini menghindari tombol terblokir oleh pointer-events dari #adContainer
+  // Posisi disesuaikan dengan #videoWrapper via JavaScript
+  document.body.appendChild(btn);
+  skipButtonEl = btn;
+
+  // Posisikan tombol tepat di atas video wrapper
+  positionSkipButton();
+
+  // Update posisi saat window resize
+  window.addEventListener('resize', positionSkipButton, { passive: true });
+
+  // ✅ PERBAIKAN: Klik langsung memicu skip — tidak perlu cek class lagi
+  // karena saat belum ready, pointer-events: none diterapkan via CSS
   btn.addEventListener('click', () => {
-    if (btn.classList.contains('skip-btn--ready')) {
-      console.log('User menekan tombol skip iklan');
-      if (imaAdsManager) {
-        try { imaAdsManager.skip(); } catch (e) {
-          console.warn('IMA skip gagal, skip manual:', e);
-          hideAdAndPlayContent();
-        }
-      } else {
-        hideAdAndPlayContent();
-      }
-    }
+    console.log('User menekan tombol skip iklan');
+    doSkipAd();
   });
 
-  // Sisipkan ke videoWrapper (di luar adContainer agar tidak tertimpa IMA)
+  console.log('Skip button dibuat dan dipasang ke body');
+}
+
+/**
+ * Posisikan tombol skip di pojok kanan bawah video wrapper
+ */
+function positionSkipButton() {
+  if (!skipButtonEl) return;
   const wrapper = document.getElementById('videoWrapper');
-  if (wrapper) {
-    wrapper.appendChild(btn);
-    skipButtonEl = btn;
-    console.log('Skip button dibuat');
+  if (!wrapper) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const scrollY = window.scrollY || window.pageYOffset;
+  const scrollX = window.scrollX || window.pageXOffset;
+
+  skipButtonEl.style.position = 'fixed';
+  skipButtonEl.style.bottom = (window.innerHeight - rect.bottom) + 16 + 'px';
+  skipButtonEl.style.right = (window.innerWidth - rect.right) + 16 + 'px';
+  skipButtonEl.style.zIndex = '9999';
+}
+
+/**
+ * Lakukan skip iklan — coba IMA skip() dulu, fallback ke manual
+ */
+function doSkipAd() {
+  if (imaAdsManager) {
+    try {
+      imaAdsManager.skip();
+      console.log('IMA: skip() berhasil dipanggil');
+    } catch (e) {
+      console.warn('IMA skip() gagal, pakai hideAdAndPlayContent:', e);
+      hideAdAndPlayContent();
+    }
+  } else {
+    hideAdAndPlayContent();
   }
 }
 
@@ -734,13 +767,16 @@ function removeSkipButton() {
     clearInterval(skipCountdownInterval);
     skipCountdownInterval = null;
   }
+  // ✅ Hapus resize listener
+  window.removeEventListener('resize', positionSkipButton);
+
   if (skipButtonEl) {
     skipButtonEl.remove();
     skipButtonEl = null;
   }
-  // Hapus juga jika ada sisa elemen lama
-  const old = document.getElementById('customSkipBtn');
-  if (old) old.remove();
+  // Hapus juga sisa elemen lama jika ada
+  const oldBtn = document.getElementById('customSkipBtn');
+  if (oldBtn) oldBtn.remove();
 }
 
 /**
@@ -810,21 +846,28 @@ function onAdStarted(event) {
 
   // ✅ Buat skip button dengan countdown
   // Ambil skipTimeOffset dari IMA jika tersedia
-  let skipOffset = skipOffsetSeconds; // default 5 detik
+  // Catatan: offset = -1 artinya VAST tidak mendefinisikan skip, kita pakai default 5 detik
+  let skipOffset = 5; // default 5 detik
   try {
     const ad = event.getAd();
-    if (ad && typeof ad.getSkipTimeOffset === 'function') {
-      const offset = ad.getSkipTimeOffset();
-      if (offset >= 0) {
-        skipOffset = offset;
-        skipOffsetSeconds = offset;
-        console.log('Skip offset dari IMA:', skipOffset, 'detik');
+    if (ad) {
+      if (typeof ad.getSkipTimeOffset === 'function') {
+        const offset = ad.getSkipTimeOffset();
+        // offset >= 0 berarti VAST menentukan skip time; -1 berarti tidak ditentukan → pakai default
+        if (offset >= 0) {
+          skipOffset = offset;
+          console.log('Skip offset dari VAST:', skipOffset, 'detik');
+        } else {
+          console.log('VAST tidak menentukan skip offset, pakai default:', skipOffset, 'detik');
+        }
       }
-      const dur = ad.getDuration();
-      if (dur > 0) adDurationSeconds = dur;
+      if (typeof ad.getDuration === 'function') {
+        const dur = ad.getDuration();
+        if (dur > 0) adDurationSeconds = dur;
+      }
     }
   } catch (e) {
-    console.warn('Tidak bisa baca skip offset dari IMA, pakai default:', skipOffset);
+    console.warn('Tidak bisa baca data iklan dari IMA, pakai default skip offset:', skipOffset);
   }
 
   createSkipButton();

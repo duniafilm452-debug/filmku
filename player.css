@@ -649,24 +649,21 @@ body {
 /* ==================== ✅ CUSTOM SKIP BUTTON ==================== */
 
 /*
- * Tombol skip diletakkan di dalam #videoWrapper (di luar #adContainer)
- * agar tidak tertimpa oleh layer IMA SDK.
- * z-index harus lebih tinggi dari #adContainer (20) agar tetap terlihat.
+ * PENTING: Tombol skip dipasang langsung ke <body> dengan position: fixed
+ * (diatur via JS dengan positionSkipButton()).
+ * Ini mencegah pointer-events dari #adContainer memblokir klik tombol.
  */
 #customSkipBtn {
-  position: absolute;
-  bottom: 20px;
-  right: 16px;
-  z-index: 30; /* Di atas adContainer (z-index: 20) */
+  position: fixed; /* Diposisikan via JS */
+  z-index: 9999;   /* Di atas segalanya */
   display: inline-flex;
   align-items: center;
   gap: 0;
-  cursor: default;
   user-select: none;
   animation: skipFadeIn 0.4s ease forwards;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.7);
 }
 
 @keyframes skipFadeIn {
@@ -683,6 +680,7 @@ body {
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   cursor: not-allowed;
+  pointer-events: none; /* ✅ Tidak bisa diklik saat masih countdown */
 }
 
 .skip-btn--waiting .skip-countdown-text {
@@ -702,6 +700,7 @@ body {
 /* Saat sudah bisa diskip */
 .skip-btn--ready {
   cursor: pointer;
+  pointer-events: auto; /* ✅ Bisa diklik saat ready */
   background: rgba(20, 20, 20, 0.88);
   border: 1.5px solid rgba(255,255,255,0.5);
   padding: 0;
