@@ -13,8 +13,8 @@
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5749642695540472" crossorigin="anonymous"></script>
 
-  <!-- IMA SDK untuk iklan video -->
-  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" onerror="window.imaLoadFailed=true"></script>
+  <!-- IMA SDK untuk iklan video VAST -->
+  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" onerror="window.imaLoadFailed=true; console.warn('IMA SDK gagal dimuat');"></script>
 
   <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
@@ -42,10 +42,17 @@
   <!-- VIDEO PLAYER -->
   <section class="video-section" aria-label="Video player">
     <div id="videoWrapper" class="video-wrapper">
+
+      <!-- ✅ PENTING: Div khusus untuk IMA Ad Container (harus ada dan terpisah!) -->
+      <div id="adContainer" class="ad-display-container"></div>
+
+      <!-- Loading / Error Overlay -->
       <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" style="display:none;">
         <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
         <span>Memuat video...</span>
       </div>
+
+      <!-- Video Element utama -->
       <video id="videoPlayer"
              controls
              preload="metadata"
@@ -54,6 +61,7 @@
              aria-label="Video player">
         <p>Browser Anda tidak mendukung pemutar video HTML5.</p>
       </video>
+
     </div>
   </section>
 
@@ -78,7 +86,7 @@
     </div>
   </section>
 
-  <!-- IKLAN -->
+  <!-- IKLAN ADSENSE -->
   <div class="ad-row">
     <div class="ad-container ad-350x50">
       <ins class="adsbygoogle"
