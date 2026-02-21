@@ -6,7 +6,7 @@ const CONFIG = {
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzYnFtdHprYXl2bnB6bW55Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjQyNTksImV4cCI6MjA3NzgwMDI1OX0.fpIU4CPrV0CwedXpLSzoLM_ZYLgl7VDYRZcYE55hy6o',
 
   // ✅ URL iklan VAST Anda
-  VAST_AD_TAG_URL: 'https://plumprush.com/dnm_FJzLd.GgN/vwZZGDUs/petmv9tuEZyUdlhkiPmTlY-4RMGTkMtxDNcjRkatuNzjcgBx/MTzLEq3lM/yyZJsUavWo1HpwdBDQ0rxi'
+  VAST_AD_TAG_URL: 'https://plumprush.com/dimAFNzdd.GvNQvEZFGqUm/UeAmf9hucZNUalKkEPjT/Yq4qMVTqM/xeNbjskMt/Nijzg/xPMHz/Eg3/MRyIZKsSa_Wq1OpXdBDp0ExE'
 };
 
 // ==================== INISIALISASI SUPABASE ====================
