@@ -1,23 +1,25 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+console.log('SUPABASE_URL:', supabaseUrl ? 'tersedia' : 'TIDAK ADA');
+console.log('SUPABASE_KEY:', supabaseKey ? 'tersedia' : 'TIDAK ADA');
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function generateSitemap() {
-  // Ambil semua ID film dari Supabase
-  // Ganti 'films' dengan nama tabel kamu
-  // Ganti 'id' dengan nama kolom ID kamu
   const { data, error } = await supabase
     .from('movies')
     .select('id');
 
   if (error) {
-    console.error('Error:', error);
-    return;
+    console.error('Error dari Supabase:', error);
+    process.exit(1);
   }
+
+  console.log(`Berhasil mengambil ${data.length} film`);
 
   const baseUrl = 'https://jelajahifilm.my.id';
   const today = new Date().toISOString().split('T')[0];
@@ -46,7 +48,7 @@ async function generateSitemap() {
   xml += `</urlset>`;
 
   fs.writeFileSync('sitemap.xml', xml);
-  console.log(`Sitemap generated dengan ${data.length} film!`);
+  console.log('Sitemap berhasil dibuat!');
 }
 
 generateSitemap();
